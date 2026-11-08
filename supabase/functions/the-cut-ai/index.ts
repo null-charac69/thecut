@@ -3,7 +3,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { chatJson, LlmError } from "./llm.ts";
-import { cleanProfile, normalizePlan, PROMPT_VERSION, validateProfile } from "./plan.ts";
+import { cleanProfile, normalizePlan, PROMPT_VERSION, qualityChecks, validateProfile } from "./plan.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +24,9 @@ Rules:
 - Be conservative: no crash diets, no extreme deficits, no medical claims. If the request is unsafe or unrealistic, say so in safety_notes and plan something safer.
 - Missing data is unknown, not zero. State assumptions you had to make.
 - Meal macros must be realistic: calories ≈ 4*protein + 4*carbs + 9*fat per item.
+- Protein: at least 1.2 g per kg of body weight for fat loss, at least 0.8 g/kg for any other goal. Vegetarian users still meet this using dairy, paneer, soy, legumes and whey if they use it.
+- training_week must contain exactly the requested training days as real sessions; every other day is "Rest" or light recovery (session_minutes 0 or a short walk/mobility).
+- When refining, keep daily calories within 20% of the user's accepted plan unless the instruction clearly requires more, and never below 1200 kcal.
 Output ONLY one JSON object with exactly these keys:
 {"title":str,"summary":str,"rationale":str,"assumptions":[str],"safety_notes":[str],"estimated_daily_cost_inr":number,
 "targets":{"calories_kcal":int,"protein_g":num,"carbs_g":num,"fat_g":num,"fibre_g":num,"water_ml":int},
@@ -184,18 +187,34 @@ async function review(supabase: any) {
   }
 }
 
-// Runs the plan generator (fresh or refine) and returns a validated plan, with one corrective retry.
-async function runPlan(userPrompt: string) {
+// Runs the plan generator (fresh or refine) and returns a validated plan. At most two model calls:
+// the retry fixes hard validation failures and soft quality problems (protein floor, training days, calorie drift).
+// If soft problems survive the retry, the plan is still returned with the issue added to safety_notes.
+// deno-lint-ignore no-explicit-any
+async function runPlan(userPrompt: string, ctx?: { profile?: any; refKcal?: number | null }) {
+  const soft = (r: { plan: Record<string, unknown> | null }) => (ctx ? qualityChecks(r.plan, ctx.profile, ctx.refKcal) : []);
   let attempt = await chatJson({ system: SYSTEM, user: userPrompt, maxTokens: 4500, temperature: 0.3 });
   let result = normalizePlan(attempt.json);
-  if (!result.plan) {
-    attempt = await chatJson({
+  let issues = result.plan ? soft(result) : result.problems;
+  if (issues.length) {
+    const retry = await chatJson({
       system: SYSTEM,
-      user: userPrompt + `\nYour previous answer was rejected: ${result.problems.join(" ")} Return a corrected JSON object.`,
+      user: userPrompt + `\nYour previous answer was rejected: ${issues.join(" ")} Return a corrected JSON object.`,
       maxTokens: 4500,
       temperature: 0.2,
     });
-    result = normalizePlan(attempt.json);
+    const r2 = normalizePlan(retry.json);
+    if (r2.plan) {
+      const i2 = soft(r2);
+      // Prefer the retry when the first had hard problems, or when it has fewer quality issues.
+      if (!result.plan || i2.length <= issues.length) { result = r2; attempt = retry; issues = i2; }
+    } else if (!result.plan) {
+      result = r2; attempt = retry;
+    }
+  }
+  if (result.plan && issues.length) {
+    const notes = Array.isArray(result.plan.safety_notes) ? (result.plan.safety_notes as string[]) : [];
+    result.plan.safety_notes = [...notes, ...issues.map((i) => `Review: ${i}`)].slice(0, 10);
   }
   return { plan: result.plan, problems: result.problems, model: attempt.model };
 }
@@ -291,7 +310,11 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
   let draftTitle: string | null = null;
   let kept = false;
 
-  for (let step = 0; step < 5; step++) {
+  const MAX_STEPS = 8;
+  const called = new Set<string>();
+  for (let step = 0; step < MAX_STEPS; step++) {
+    // Some models spend their whole budget on read tools. Force an answer on the last two steps.
+    if (step >= MAX_STEPS - 2) transcript += `\nSYSTEM_NOTE: You have enough information. Reply now with ONLY {"final":"..."}.`;
     let out;
     try {
       out = await chatJson({ system: CHAT_SYSTEM, user: `<user_data>\n${transcript}\n</user_data>\nReply with the next JSON.`, maxTokens: 1500, temperature: 0.3 });
@@ -305,6 +328,12 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
     const tool = String(j.tool ?? "");
     const args = j.args ?? {};
     let result: unknown;
+    const sig = tool + JSON.stringify(args);
+    if (called.has(sig) && tool !== "propose_plan_update") {
+      transcript += `\nCOACH_TOOL_CALL: ${JSON.stringify({ tool, args })}\nTOOL_RESULT: ${JSON.stringify({ note: "You already called this tool with these arguments. Use the earlier result and reply with {\"final\":\"...\"}." })}`;
+      continue;
+    }
+    called.add(sig);
     try {
       if (tool === "get_live_plan") result = await liveState(sb);
       else if (tool === "get_profile") result = (await activeInputs(sb))?.inputs ?? null;
@@ -336,7 +365,9 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
         const pe = validateProfile(profile);
         if (pe || !live) result = { error: "Cannot draft an update: " + (pe ?? "no active plan") };
         else {
-          const g = await runPlan(liveRefinePrompt(live, cleanProfile(profile), String(args.instruction ?? "")));
+          const base = await baselineRow(sb);
+          const refKcal = Number((base && base.plan_id === live.plan_id ? base.state?.targets?.calories_kcal : live?.targets?.calories_kcal) ?? 0) || null;
+          const g = await runPlan(liveRefinePrompt(live, cleanProfile(profile), String(args.instruction ?? "")), { profile: cleanProfile(profile), refKcal });
           if (!g.plan) result = { error: "Draft failed validation: " + g.problems.join(" ") };
           else {
             const { data: row, error } = await sb.from("ai_plan_versions").insert({
@@ -417,7 +448,13 @@ Deno.serve(async (req: Request) => {
       : "Create a fresh plan for this profile.");
 
   try {
-    const g = await runPlan(userPrompt);
+    let refKcal: number | null = null;
+    if (action === "refine") {
+      const live = await liveState(supabase);
+      const base = await baselineRow(supabase);
+      refKcal = Number((base && live && base.plan_id === live.plan_id ? base.state?.targets?.calories_kcal : live?.targets?.calories_kcal) ?? 0) || null;
+    }
+    const g = await runPlan(userPrompt, { profile, refKcal });
     if (!g.plan) {
       console.error("Plan rejected", g.problems);
       return reply({ error: "The AI produced a plan that failed safety checks. Please try again." }, 422);
