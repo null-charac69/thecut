@@ -152,3 +152,30 @@ export function cleanProfile(p: any) {
   }
   return out;
 }
+
+// Soft quality checks on an otherwise valid plan. They drive one corrective retry; they never hard-fail a plan.
+const NON_TRAINING = /rest|recover|mobility|stretch|walk|light cardio|off\b/i;
+// deno-lint-ignore no-explicit-any
+export function qualityChecks(plan: any, profile: any, refKcal?: number | null): string[] {
+  const out: string[] = [];
+  if (!plan) return out;
+  const kg = num(profile?.weight_kg, 0);
+  const protein = num(plan.targets?.protein_g, 0);
+  if (kg > 0 && protein > 0) {
+    const perKg = profile?.goal === "fat_loss" ? 1.2 : 0.8;
+    const floor = Math.round(kg * perKg);
+    if (protein < floor) out.push(`protein target ${protein} g is below the ${perKg} g/kg minimum (${floor} g for ${kg} kg). Raise protein in the meals and targets.`);
+  }
+  const days = num(profile?.training_days_per_week, -1);
+  if (days >= 0 && Array.isArray(plan.training_week)) {
+    // deno-lint-ignore no-explicit-any
+    const n = plan.training_week.filter((d: any) => num(d.session_minutes) > 0 && !NON_TRAINING.test(String(d.focus ?? ""))).length;
+    if (days > 0 && n !== days) out.push(`training_week has ${n} training sessions but the user asked for ${days} training days per week. Use exactly ${days}; other days must be rest or light recovery.`);
+    if (days === 0 && n > 0) out.push("the user asked for no training days; training_week must contain only rest or light recovery.");
+  }
+  const kcal = num(plan.targets?.calories_kcal, 0);
+  if (refKcal && kcal && Math.abs(kcal - refKcal) / refKcal > 0.2) {
+    out.push(`daily calories ${kcal} kcal drift more than 20% from the user's accepted plan (${Math.round(refKcal)} kcal). Stay within 20% of it unless the instruction clearly requires a bigger change, and never go below ${MIN_DAILY_KCAL} kcal.`);
+  }
+  return out;
+}
