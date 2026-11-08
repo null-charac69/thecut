@@ -115,7 +115,63 @@ img,svg,canvas{max-width:100%}.table{display:block;max-width:100%;overflow-x:aut
 .num,.ai-target strong{font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
-<style>.pe-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.pe-changes{margin:6px 0 0 18px;font-size:12px;opacity:.85}.coach-chat .chat-msg{margin:8px 0;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04)}.coach-chat .chat-msg.assistant{border-left:3px solid #c8f169}.coach-chat .chat-msg p{margin:4px 0 0;white-space:pre-wrap}.chat-form{display:flex;gap:8px;margin-top:10px}.chat-form input{flex:1}</style></head>
+<style>.pe-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.pe-changes{margin:6px 0 0 18px;font-size:12px;opacity:.85}.coach-chat .chat-msg{margin:8px 0;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04)}.coach-chat .chat-msg.assistant{border-left:3px solid #c8f169}.coach-chat .chat-msg p{margin:4px 0 0;white-space:pre-wrap}.chat-form{display:flex;gap:8px;margin-top:10px}.chat-form input{flex:1}</style><style>/* v3 minimal workspace */
+.btn,.chip,.pill{white-space:nowrap}.row>.btn,.addrow>.btn,.chat-form>.btn{flex:none}
+.addrow input[name=quantity]{flex:0 0 96px}
+.topbar.nodate #prev,.topbar.nodate #next,.topbar.nodate #date{display:none}
+#tourBtn{display:none!important}
+.insight{display:flex;align-items:flex-start;gap:12px}
+.insight>.grow{flex:1 1 auto;min-width:0}
+.insight>.btn{flex:none;align-self:flex-start}
+.chat-form input{min-width:0}
+.empty-plan{text-align:left;padding:28px}.empty-plan h2{margin:6px 0 8px;font-size:22px}.empty-plan .btn{margin-top:8px}
+.mbar{margin:10px 0 16px}.mbar b small{color:var(--muted);font-weight:500}
+.spark{width:100%;height:auto;display:block}
+.addrow{margin-bottom:12px;gap:8px;flex-wrap:nowrap}.addrow input{flex:1 1 auto;min-width:0}
+.seg{display:flex;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:5px;margin:0 0 16px;width:100%;max-width:440px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);padding:11px 10px;border-radius:10px;font-weight:650;font-size:13px;cursor:pointer}
+.seg button small{margin-left:5px;opacity:.8}.seg button.on{background:var(--lime);color:#172318}
+.cat{display:flex;justify-content:space-between;margin:18px 0 4px}.cat span{color:var(--muted)}
+.tick-row{cursor:pointer;min-height:48px}.tick-row input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--lime)}
+.struck{text-decoration:line-through;color:var(--muted)}
+/* workout logger */
+.wk{max-width:760px;margin:0 auto;padding-bottom:120px}
+.wk-top{position:sticky;top:0;z-index:20;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;background:var(--bg);padding:10px 0 8px}
+.wk-title{background:transparent;border:0;border-bottom:1px dashed var(--line);font-size:22px;font-weight:750;color:var(--text);width:100%;padding:2px 0;border-radius:0}
+.wk-meta{display:flex;gap:14px;color:var(--muted);font-size:13px;margin-top:6px}.wk-meta span:first-child{color:var(--lime);font-variant-numeric:tabular-nums;font-weight:700}
+.wk-restpick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.chip{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:650;cursor:pointer;min-height:34px}.chip.on{background:var(--lime);border-color:var(--lime);color:#172318}
+.wk-ex{margin-top:14px}.wk-ex h3{margin:0;font-size:17px}.wk-prev{color:var(--muted);font-size:12px;margin:4px 0 10px}
+.wk-h,.wk-set{display:grid;grid-template-columns:34px minmax(0,1fr) minmax(0,1fr) 56px;gap:10px;align-items:center}
+.wk-h span{text-align:center}.wk-h{font-size:10px;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;padding:0 2px}
+.wk-set{margin:7px 0;padding:6px;border-radius:14px;background:var(--panel2);border:1px solid transparent;transition:background .15s,border-color .15s}
+.wk-set.done{background:#27391f;border-color:#587a3a}
+.wk-set .n{text-align:center;color:var(--muted);font-weight:700}
+.wk-set input{width:100%;height:48px;text-align:center;font-size:19px;font-weight:700;border-radius:10px;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:0 4px;font-variant-numeric:tabular-nums}
+.wk-set.done input{opacity:.7}
+.tick{width:52px;height:48px;border-radius:12px;border:2px solid var(--line);background:transparent;color:#172318;font-size:22px;font-weight:900;cursor:pointer;padding:0}
+.tick[aria-pressed=true]{background:var(--lime);border-color:var(--lime)}
+.pr{display:inline-block;margin-left:6px;background:var(--orange);color:#2b1a05;font-size:10px;font-weight:900;letter-spacing:.08em;padding:2px 7px;border-radius:999px;vertical-align:middle}
+.wk-restbar{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:60;display:flex;gap:10px;align-items:center;background:#0e1510;border:1px solid var(--lime);border-radius:999px;padding:10px 12px 10px 20px;box-shadow:0 14px 40px #0008;font-size:15px}
+.wk-restbar b{color:var(--lime);font-size:20px;font-variant-numeric:tabular-nums;margin-left:4px}
+.wk-hero{margin:4px 0 2px;font-size:26px}.wk-chips{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 16px}.wk-chips span{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--muted)}
+.wk-go{width:100%;height:54px;font-size:16px;border-radius:14px}
+.wk-hist{border-bottom:1px solid var(--line);padding:6px 0}.wk-hist summary{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;list-style:none;min-height:44px}.wk-hist summary::-webkit-details-marker{display:none}
+.wk-hist summary small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.wk-hx{display:flex;justify-content:space-between;gap:12px;padding:6px 2px;font-size:13px;flex-wrap:wrap}.wk-hx span{color:var(--muted)}
+.wk-edit summary{cursor:pointer;color:var(--muted);font-size:13px;padding:10px 2px}
+/* modals */
+.modal-bg{position:fixed;inset:0;z-index:100;background:#000a;backdrop-filter:blur(4px);display:grid;place-items:center;padding:18px;overflow-y:auto}
+.modal{width:min(440px,100%);background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:28px 26px;box-shadow:var(--shadow);text-align:center}
+.modal h2{margin:6px 0 10px;font-size:24px}.modal p{margin:8px 0}.modal textarea{width:100%;margin-top:10px}
+.mail-ico{width:58px;height:58px;margin:0 auto 6px;border-radius:50%;display:grid;place-items:center;font-size:28px;background:#2c4126;color:var(--lime)}
+.vm-sub{justify-content:center;margin-top:10px;flex-wrap:wrap}
+.wk-sum{margin:14px 0}.wk-sum div{background:var(--panel2);border-radius:14px;padding:12px 6px}.wk-sum b{display:block;font-size:24px;color:var(--lime)}.wk-sum small{color:var(--muted)}
+.pr-line{color:var(--orange);font-weight:700}
+.rpe{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:8px 0}
+@media(max-width:860px){.wk-top{flex-wrap:wrap;gap:8px}.wk-top>.grow{flex:1 1 100%;min-width:0}.wk-top>.row{width:100%}.wk-top>.row .btn{flex:1}.mobilebar{overflow-x:hidden!important}.mobilebar button{flex:1 1 0!important;min-width:0!important;padding:6px 2px!important;font-size:10px!important;white-space:nowrap}.mobilebar button span{font-size:16px}}
+@media(max-width:860px){.wk-restbar{bottom:calc(84px + env(safe-area-inset-bottom))}.wk{padding-bottom:170px}.wk-top{top:0}}
+</style></head>
 <body>
 <div id="root"><div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><div class="muted">Connecting securely…</div><span class="loader"></span></div></div></div>
 <div id="toast" class="toast hidden"></div>
@@ -181,12 +237,13 @@ function target(){return day.target||settings}
 async function changeDate(d){if(!d||d>today())return;date=d;await loadDay();if(tab==='settings')await loadReminders();render()}
 async function toggleMeal(m){let status=m.status==='completed'?'planned':'completed';await q(supabase.from('daily_meals').update({status,completed_at:status==='completed'?new Date().toISOString():null}).eq('id',m.id).eq('user_id',user.id));await loadDay();render()}
 function renderAuth(){ $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><h1>Own the process.</h1><p class="muted">Your nutrition, training and progress. One private workspace.</p><div class="authswitch"><button class="btn primary" id="modeIn">Sign in</button><button class="btn" id="modeUp">Create account</button></div><form id="authForm"><div id="nameField" class="field hidden"><label>YOUR NAME</label><input name="name" autocomplete="name" placeholder="Name"/></div><div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"/></div><div class="field"><label>PASSWORD</label><input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"/></div><button class="btn primary" style="width:100%;margin-top:8px" type="submit">Sign in</button><p class="muted small" id="authMsg">Your account is secured with Supabase authentication.</p></form><p class="muted small">Your private tracking data is protected by per-account database policies.</p></div></div>`;
-let mode='in';const setMode=m=>{mode=m;$('#modeIn').classList.toggle('primary',m==='in');$('#modeUp').classList.toggle('primary',m==='up');$('#nameField').classList.toggle('hidden',m==='in');$('#authForm button[type=submit]').textContent=m==='in'?'Sign in':'Create account';$('#authMsg').textContent=m==='in'?'Use your account email and password.':'We may send a verification link to your email.'};$('#modeIn').onclick=()=>setMode('in');$('#modeUp').onclick=()=>setMode('up');$('#authForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.currentTarget),email=f.get('email'),password=f.get('password');let b=e.currentTarget.querySelector('button');b.disabled=true;b.textContent='Please wait…';try{if(mode==='up'){let {data,error}=await supabase.auth.signUp({email,password,options:{data:{name:f.get('name')},emailRedirectTo:location.origin}});if(error)throw error;if(data.session){session=data.session;await bootstrap()}else $('#authMsg').textContent='Account request received. Check your inbox for the verification link, then sign in.'}else{let {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;session=data.session;await bootstrap()}}catch(err){$('#authMsg').textContent=err.message}finally{b.disabled=false;b.textContent=mode==='in'?'Sign in':'Create account'}}}
-const NAV_ITEMS=[['ai','✦','AI Planner','AI Plan'],['overview','⌂','Overview','Home'],['nutrition','◉','Nutrition','Food'],['habits','◷','Daily habits','Habits'],['training','↗','Training','Train'],['progress','▤','Progress','Progress'],['planning','▣','Planning','Plan'],['analytics','▥','Analytics','Stats'],['settings','⚙','Settings','Settings']];
+let mode='in';const setMode=m=>{mode=m;$('#modeIn').classList.toggle('primary',m==='in');$('#modeUp').classList.toggle('primary',m==='up');$('#nameField').classList.toggle('hidden',m==='in');$('#authForm button[type=submit]').textContent=m==='in'?'Sign in':'Create account';$('#authMsg').textContent=m==='in'?'Use your account email and password.':'We may send a verification link to your email.'};$('#modeIn').onclick=()=>setMode('in');$('#modeUp').onclick=()=>setMode('up');$('#authForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.currentTarget),email=f.get('email'),password=f.get('password');let b=e.currentTarget.querySelector('button');b.disabled=true;b.textContent='Please wait…';try{if(mode==='up'){let {data,error}=await supabase.auth.signUp({email,password,options:{data:{name:f.get('name')},emailRedirectTo:location.origin}});if(error)throw error;if(data.session){session=data.session;await bootstrap()}else{$('#authMsg').textContent='';showVerifyModal(email,password)}}else{let {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;session=data.session;await bootstrap()}}catch(err){$('#authMsg').textContent=err.message}finally{b.disabled=false;b.textContent=mode==='in'?'Sign in':'Create account'}}}
+const NAV_ITEMS=[['ai','✦','Plan','Plan'],['meals','◉','Meals','Meals'],['workout','↗','Workout','Workout'],['weight','▤','Weight','Weight'],['coach','◈','Coach','Coach'],['prep','▣','Prep & Grocery','Prep']];
+const LEGACY_TABS={overview:'ai',nutrition:'meals',habits:'meals',training:'workout',progress:'weight',planning:'prep',analytics:'ai',settings:'ai'};
 function navBtn([id,ico,label,short],mobile){const locked=!aiUnlocked&&id!=='ai',cls=(tab===id?'active':'')+(locked?' locked':'')+(id==='ai'?' ai-first':'');
  return mobile?`<button data-tab="${id}" class="${cls}" ${locked?'aria-disabled="true"':''}><span>${locked?'🔒':ico}</span>${short}</button>`:`<button class="${cls}" data-tab="${id}" ${locked?'aria-disabled="true" title="Generate your first AI plan to unlock"':''}><span class="ico">${ico}</span>${label}${locked?'<span class="lock">🔒</span>':''}</button>`}
-function nav(){return `<aside class="sidebar"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>2.0 · YOUR WORKSPACE</small></div></div><div class="nav-label start">START HERE</div><nav class="nav">${navBtn(NAV_ITEMS[0])}</nav><div class="nav-label">TRACKING</div><nav class="nav">${NAV_ITEMS.slice(1).map(x=>navBtn(x)).join('')}</nav><div class="side-spacer"></div><div class="sidebar-note"><strong>THE DAILY RULE</strong>Make the next good choice. Then repeat.</div><div class="side-status"><i class="dot"></i>Cloud sync enabled</div></aside>`}
-function header(){return `<header class="topbar"><div class="crumb">THE CUT / <b>${tab.toUpperCase()}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${date}" max="${today()}" style="width:145px;padding:6px 8px;font-size:11px"/><button class="pill" id="next" ${date>=today()?'disabled':''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">🔔${unreadCount()?`<b class="badge">${unreadCount()}</b>`:''}</button><button class="pill" id="tourBtn" title="Take the app tour" aria-label="Take the app tour">? Tour</button><span class="pill">${esc(user.email)}</span><button class="userpill" id="signout" title="Sign out">${esc((user.user_metadata?.name||user.email||'U').slice(0,1).toUpperCase())}</button></div></header>`}
+function nav(){return `<aside class="sidebar"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>2.0 · YOUR WORKSPACE</small></div></div><div class="nav-label">YOUR WORKSPACE</div><nav class="nav">${NAV_ITEMS.map(x=>navBtn(x)).join('')}</nav><div class="side-spacer"></div><div class="sidebar-note"><strong>THE DAILY RULE</strong>Make the next good choice. Then repeat.</div><div class="side-status"><i class="dot"></i>Cloud sync enabled</div></aside>`}
+function header(){return `<header class="topbar${DATE_TABS.includes(tab)?'':' nodate'}"><div class="crumb">THE CUT / <b>${((NAV_ITEMS.find(x=>x[0]===tab)||[0,0,tab])[2]).toUpperCase()}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${date}" max="${today()}" style="width:145px;padding:6px 8px;font-size:11px"/><button class="pill" id="next" ${date>=today()?'disabled':''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">🔔${unreadCount()?`<b class="badge">${unreadCount()}</b>`:''}</button><button class="pill" id="tourBtn" title="Take the app tour" aria-label="Take the app tour">? Tour</button><span class="pill">${esc(user.email)}</span><button class="userpill" id="signout" title="Sign out">${esc((user.user_metadata?.name||user.email||'U').slice(0,1).toUpperCase())}</button></div></header>`}
 function pageHead(k,title,sub,extra=''){return `<div class="pagehead"><div><div class="eyebrow">${k}</div><h1>${title}<em>.</em></h1><p class="subtitle">${sub}</p></div>${extra}</div>`}
 function card(title,body,extra=''){return `<section class="card"><div class="section-title"><h2>${title}</h2>${extra}</div>${body}</section>`}
 function metric(label,value,unit,foot){return `<div class="card metric"><div class="label">${label}</div><strong>${value} <span class="muted" style="font-size:13px">${unit}</span></strong><small>${foot}</small></div>`}
@@ -338,8 +395,8 @@ activity.forEach(x=>{if(x.steps!==null)stepsByDay[x.local_date]=Number(x.steps)}
 let nvals=Object.values(nutritionByDay),svals=Object.values(stepsByDay);
 analyticsData={meals:m.filter(x=>x.status==='completed').length,workouts:w.length,weight:b.length?b[b.length-1].weight_kg:null,byDay,measurements:b,avgKcal:nvals.length?nvals.reduce((s,x)=>s+x.k,0)/nvals.length:0,avgProtein:nvals.length?nvals.reduce((s,x)=>s+x.p,0)/nvals.length:0,avgSteps:svals.length?svals.reduce((s,x)=>s+x,0)/svals.length:0,loggedDays:nvals.length,activityDays:svals.length};
 }}
-async function render(){if(!aiUnlocked&&tab!=='ai')tab='ai';let root=$('#root');root.innerHTML=`<div class="app">${nav()}<main class="main">${header()}<div class="page" id="pagebody"><span class="loader"></span> Loading…</div></main></div><div class="mobilebar">${NAV_ITEMS.map(x=>navBtn(x,true)).join('')}</div>`;
-const mobileBar=root.querySelector('.mobilebar');const activeNav=mobileBar?.querySelector('.active');if(mobileBar&&activeNav&&window.innerWidth<=860)mobileBar.scrollLeft=Math.max(0,activeNav.offsetLeft-(mobileBar.clientWidth-activeNav.offsetWidth)/2);try{await loadModule();await loadInsights();$('#pagebody').innerHTML=({overview:()=>coachPanel(false)+overview(),nutrition,habits,training:trainingV2,progress,planning:planningV2,analytics:analyticsV2,settings:settingsPageV2,ai:()=>coachPanel(true)+aiPlannerPage()})[tab]();wire();wireV2()}catch(e){fail(e);$('#pagebody').innerHTML=`<div class="notice warn">${esc(e.message)}</div>`}}
+async function render(){tab=LEGACY_TABS[tab]||tab;if(!aiUnlocked&&tab!=='ai')tab='ai';let root=$('#root');root.innerHTML=`<div class="app">${nav()}<main class="main">${header()}<div class="page" id="pagebody"><span class="loader"></span> Loading…</div></main></div><div class="mobilebar">${NAV_ITEMS.map(x=>navBtn(x,true)).join('')}</div>`;
+const mobileBar=root.querySelector('.mobilebar');const activeNav=mobileBar?.querySelector('.active');if(mobileBar&&activeNav&&window.innerWidth<=860)mobileBar.scrollLeft=Math.max(0,activeNav.offsetLeft-(mobileBar.clientWidth-activeNav.offsetWidth)/2);try{await loadActivePlan();if(tab==='ai')await loadModule();if(tab==='weight')await loadWeight();if(tab==='prep')await loadGroceries();if(tab==='workout'||tab==='coach'){await loadPlanHistory();if(tab==='workout'&&aiActivePlan&&!wkHist){try{await loadWkHistory()}catch(e){console.error(e);wkHist={}}}}await loadInsights();$('#pagebody').innerHTML=({ai:aiPlannerPage,meals:mealsV3,workout:workoutV3,weight:weightV3,coach:()=>aiActivePlan?coachPanel(true):pageHead('COACH','Coach','Your plan coach.')+needsPlanCard('coaching'),prep:prepV3})[tab]();wire();wireV2();wireV3();if(tab==='workout'&&wk)wireWk()}catch(e){fail(e);$('#pagebody').innerHTML=`<div class="notice warn">${esc(e.message)}</div>`}}
 function wire(){document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=async()=>{await gotoTab(b.dataset.tab)});document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=async()=>{await gotoTab(b.dataset.goto)});$('#prev').onclick=()=>changeDate(shift(date,-1));$('#next').onclick=()=>changeDate(shift(date,1));$('#date').onchange=e=>changeDate(e.target.value);$('#signout')?.addEventListener('click',logout);$('#logout2')?.addEventListener('click',logout);document.querySelectorAll('[data-meal]').forEach(b=>b.onclick=()=>toggleMeal(day.meals.find(x=>x.id===b.dataset.meal)).catch(fail));document.querySelectorAll('[data-editmeal]').forEach(b=>b.onclick=()=>editMealTemplate(b.dataset.editmeal));document.querySelectorAll('[data-delmeal]').forEach(b=>b.onclick=()=>deleteMealTemplate(b.dataset.delmeal));$('#addMealTemplate')?.addEventListener('click',addMealTemplate);document.querySelectorAll('[data-water]').forEach(b=>b.onclick=()=>addWater(Number(b.dataset.water)).catch(fail));
 $('#quickCheck')?.addEventListener('submit',e=>saveCheck(e,'quickCheck'));$('#checkForm')?.addEventListener('submit',e=>saveCheck(e,'checkForm'));$('#activityForm')?.addEventListener('submit',saveActivity);$('#foodForm')?.addEventListener('submit',saveFood);$('#workoutForm')?.addEventListener('submit',saveWorkoutV2);document.querySelectorAll('[data-ai-workout]').forEach(b=>b.onclick=()=>{const d=aiActivePlan?.plan?.training_week?.[Number(b.dataset.aiWorkout)],f=$('#workoutForm');if(!d||!f)return;f.elements.title.value=d.day+' · '+d.focus;f.elements.duration_minutes.value=d.session_minutes||45;const focus=String(d.focus||'').toLowerCase();f.elements.workout_type.value=/cardio|running|cycling|conditioning/.test(focus)?'cardio':/mobility|yoga|recovery|stretch/.test(focus)?'mobility':'strength';f.elements.exercises.value=(d.exercises||[]).map(x=>String(x).trim()+' | 3 | 10 | 0').join('\n');f.elements.notes.value='Loaded from the active AI training plan. Adjust exercises, sets, reps and loads to your ability.';f.scrollIntoView({behavior:'smooth',block:'start'});toast('AI session loaded. Review the details before saving.');});$('#measureForm')?.addEventListener('submit',saveMeasurement);$('#photoForm')?.addEventListener('submit',uploadPhoto);$('#groceryForm')?.addEventListener('submit',addGroceryV2);$('#prepForm')?.addEventListener('submit',addPrep);$('#settingsForm')?.addEventListener('submit',saveSettingsV2);
 document.querySelectorAll('[data-delfood]').forEach(b=>b.onclick=()=>deleteFood(b.dataset.delfood));document.querySelectorAll('[data-logfood]').forEach(b=>b.onclick=()=>logCatalogFood(b.dataset.logfood));document.querySelectorAll('[data-editcatalog]').forEach(b=>b.onclick=()=>editCatalogFood(b.dataset.editcatalog));document.querySelectorAll('[data-delcatalog]').forEach(b=>b.onclick=()=>deleteCatalogFood(b.dataset.delcatalog));document.querySelectorAll('[data-editfood]').forEach(b=>b.onclick=()=>editFood(b.dataset.editfood));document.querySelectorAll('[data-delwater]').forEach(b=>b.onclick=()=>deleteWater(b.dataset.delwater));document.querySelectorAll('[data-grocery]').forEach(b=>b.onchange=()=>updateGrocery(b.dataset.grocery,b.checked));document.querySelectorAll('[data-delgrocery]').forEach(b=>b.onclick=()=>deleteRow('grocery_items',b.dataset.delgrocery,'planning'));document.querySelectorAll('[data-prep]').forEach(b=>b.onchange=()=>updatePrep(b.dataset.prep,b.checked));document.querySelectorAll('[data-delprep]').forEach(b=>b.onclick=()=>deleteRow('prep_tasks',b.dataset.delprep,'planning'));document.querySelectorAll('[data-delworkout]').forEach(b=>b.onclick=()=>deleteRow('workout_sessions',b.dataset.delworkout,'training'));document.querySelectorAll('[data-editworkout]').forEach(b=>b.onclick=()=>editWorkoutV2(b.dataset.editworkout));document.querySelectorAll('[data-delmeasurement]').forEach(b=>b.onclick=()=>deleteRow('body_measurements',b.dataset.delmeasurement,'progress'));document.querySelectorAll('[data-editmeasurement]').forEach(b=>b.onclick=()=>editMeasurementV2(b.dataset.editmeasurement));document.querySelectorAll('[data-delphoto]').forEach(b=>b.onclick=()=>deletePhotoV2(b.dataset.delphoto));document.querySelectorAll('[data-reminder-toggle]').forEach(b=>b.onchange=()=>toggleReminder(b.dataset.reminderToggle,b.checked));document.querySelectorAll('[data-delreminder]').forEach(b=>b.onclick=()=>deleteReminder(b.dataset.delreminder));$('#reminderForm')?.addEventListener('submit',saveReminder);$('#enableNotifications')?.addEventListener('click',enablePushNotifications);$('#disableNotifications')?.addEventListener('click',disablePushNotifications);$('#exportData')?.addEventListener('click',exportData);$('#aiIntakeForm')?.addEventListener('submit',generateAIPlan);$('#aiIntakeForm')?.addEventListener('input',updateAIEditPreview);$('#aiIntakeForm')?.addEventListener('change',updateAIEditPreview);document.querySelectorAll('[data-ai-generate-new]').forEach(b=>b.onclick=()=>generateFreshAIPlan(b));$('#aiRefineForm')?.addEventListener('submit',refineAIPlan);document.querySelectorAll('[data-ai-apply]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiApply));document.querySelectorAll('[data-ai-select]').forEach(b=>b.onclick=()=>{aiPlanDraft=aiPlanHistory.find(x=>x.id===b.dataset.aiSelect)||null;render()});}
@@ -379,7 +436,7 @@ async function initV2(pr){
  try{const {count,error}=await supabase.from('ai_plan_versions').select('id',{count:'exact',head:true}).eq('user_id',user.id);if(error)throw error;aiUnlocked=(count||0)>0}
  catch(e){console.error(e);aiUnlocked=true} // fail open: a transient error must never lock a user out
  let seen=false;try{seen=localStorage.getItem('cut_tour_'+user.id)==='1'}catch{}
- tourState={done:!!pr?.tour_completed_at||seen,open:false,step:0,started:false};
+ tourState={done:true,open:false,step:0,started:false};try{await loadActivePlan()}catch(e){console.error(e)}
  subscribeInsights();
  if(aiUnlocked)setTimeout(runAssess,4000);
 }
@@ -390,7 +447,7 @@ async function loadInsights(){
  if(!insightsEnabled||!user)return;
  try{const since=new Date(Date.now()-3*864e5).toISOString().slice(0,10);
   const {data,error}=await supabase.from('agent_insights').select('*').eq('user_id',user.id).gte('insight_date',since).order('created_at',{ascending:false}).limit(30);
-  if(error)throw error;insights=data||[]}
+  if(error)throw error;insights=(data||[]).filter(i=>!/^(hydration|recovery)/.test(String(i.kind||'')))}
  catch(e){insights=[];if(/agent_insights|schema cache|PGRST205|42P01/i.test(String(e?.message||e?.code||'')))insightsEnabled=false;else console.error(e)}
 }
 function subscribeInsights(){
@@ -568,7 +625,7 @@ function wireV2(){
  applyAIPlan=hook(applyAIPlan,ackState);
 }
 
-supabase.auth.onAuthStateChange((event,s)=>{session=s;if(event==='SIGNED_OUT'){user=null;unsubscribeInsights();aiUnlocked=false;insights=[];tourState=null;coachReview=null;if(reminderTimer)clearInterval(reminderTimer);renderAuthV2()}if(event==='PASSWORD_RECOVERY'){recoveryMode=true;renderPasswordRecovery()}});
+supabase.auth.onAuthStateChange((event,s)=>{session=s;if(event==='SIGNED_IN'&&!user&&s&&document.getElementById('verifyModal')){session=s;document.getElementById('verifyModal').remove();bootstrap()}if(event==='SIGNED_OUT'){user=null;wk=null;wkHist=null;aiActivePlan=null;unsubscribeInsights();aiUnlocked=false;insights=[];tourState=null;coachReview=null;if(reminderTimer)clearInterval(reminderTimer);renderAuthV2()}if(event==='PASSWORD_RECOVERY'){recoveryMode=true;renderPasswordRecovery()}});
 let reminders = [];
 let pushEnabled = false;
 let reminderTimer = null;
@@ -767,7 +824,7 @@ function renderAuthV2(){
  let mode='in';const setMode=m=>{mode=m;$('#modeIn').classList.toggle('primary',m==='in');$('#modeUp').classList.toggle('primary',m==='up');$('#nameField').classList.toggle('hidden',m==='in');$('#authForm button[type=submit]').textContent=m==='in'?'Sign in':'Create account';$('#authMsg').textContent=m==='in'?'Use your account email and password.':'We may send a verification link to your email.'};
  $('#modeIn').onclick=()=>setMode('in');$('#modeUp').onclick=()=>setMode('up');
  $('#forgotPass').onclick=async()=>{const email=$('input[name=email]').value.trim();if(!email){$('#authMsg').textContent='Enter your email address first.';return}try{const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin});if(error)throw error;$('#authMsg').textContent='Password reset email sent. Open it on this device and follow the link.'}catch(err){$('#authMsg').textContent=err.message}};
- $('#authForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),email=f.get('email'),password=f.get('password'),b=e.currentTarget.querySelector('button[type=submit]');b.disabled=true;b.textContent='Please wait…';try{if(mode==='up'){const {data,error}=await supabase.auth.signUp({email,password,options:{data:{name:f.get('name')},emailRedirectTo:location.origin}});if(error)throw error;if(data.session){session=data.session;await bootstrap()}else $('#authMsg').textContent='Account request received. Check your inbox for the verification link, then sign in.'}else{const {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;session=data.session;await bootstrap()}}catch(err){$('#authMsg').textContent=err.message}finally{b.disabled=false;b.textContent=mode==='in'?'Sign in':'Create account'}};
+ $('#authForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),email=f.get('email'),password=f.get('password'),b=e.currentTarget.querySelector('button[type=submit]');b.disabled=true;b.textContent='Please wait…';try{if(mode==='up'){const {data,error}=await supabase.auth.signUp({email,password,options:{data:{name:f.get('name')},emailRedirectTo:location.origin}});if(error)throw error;if(data.session){session=data.session;await bootstrap()}else $('#authMsg').textContent='Account request received. Check your inbox for the verification link, then sign in.'}else{const {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;session=data.session;await bootstrap()}}catch(err){if(mode==='in'&&/confirm/i.test(err.message))showVerifyModal(email,password);else $('#authMsg').textContent=err.message}finally{b.disabled=false;b.textContent=mode==='in'?'Sign in':'Create account'}};
 }
 function planningV2(){
  const groups=['PROTEIN','DAIRY','PANTRY','PRODUCE'];
@@ -776,6 +833,218 @@ function planningV2(){
  ${groceries.length?groups.map(g=>`<h3 class="eyebrow" style="margin:16px 0 5px">${g}</h3>${groceries.filter(x=>x.category===g||(!x.category&&g==='PRODUCE')).map(x=>`<div class="listitem"><input type="checkbox" data-grocery="${x.id}" ${x.is_purchased?'checked':''}/><div class="grow"><strong style="${x.is_purchased?'text-decoration:line-through;color:var(--muted)':''}">${esc(x.name)}</strong><small>${esc(x.quantity||'')}</small></div><button class="btn sm danger" data-delgrocery="${x.id}">Remove</button></div>`).join('')}`).join(''):'<div class="empty">No grocery items for this week.</div>'}`)}
  ${card('Meal prep checklist',`<form id="prepForm" class="row" style="margin-bottom:12px"><input name="task" required placeholder="Add a preparation task"/><button class="btn primary">Add</button></form>${day.prep.map(t=>`<div class="listitem"><input type="checkbox" data-prep="${t.id}" ${t.is_completed?'checked':''}/><div class="grow"><strong>${esc(t.task)}</strong></div><button class="btn sm danger" data-delprep="${t.id}">Remove</button></div>`).join('')||'<div class="empty">No prep tasks for this date.</div>'}`)}
  </div>`;
+}
+
+
+/* ================= v3: minimal workspace — Plan · Meals · Workout · Weight · Coach · Prep & Grocery ================= */
+const DATE_TABS=['meals','prep'];
+const needsPlanCard=what=>`<div class="card empty-plan"><div class="eyebrow">NEXT STEP</div><h2>Apply your plan to start ${what}</h2><p class="muted">Your targets, meals and sessions come from your plan. Open it, review it, then press Apply.</p><button class="btn primary" data-tab="ai">Open my plan</button></div>`;
+async function loadActivePlan(){const r=await q(supabase.from('ai_plan_versions').select('*').eq('user_id',user.id).eq('status','active').order('applied_at',{ascending:false,nullsFirst:false}).limit(1));aiActivePlan=r[0]||null}
+async function loadPlanHistory(){aiPlanHistory=await q(supabase.from('ai_plan_versions').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(10))}
+const bar3=(label,val,target,unit)=>{const pct=Math.min(100,Number(val)/Math.max(1,Number(target))*100);return `<div class="mbar"><div class="row between"><span>${label}</span><b>${fmt(val)} <small>/ ${fmt(target)} ${unit}</small></b></div><div class="progress"><i style="width:${pct}%"></i></div></div>`};
+
+/* ---------- Meals ---------- */
+function mealsV3(){
+ if(!aiActivePlan)return pageHead('DIET','Meals','Your daily meals, from your plan.')+needsPlanCard('logging meals');
+ const t=totals(),tg=aiActivePlan.plan?.targets||{};
+ return `${pageHead('DIET · '+dateFmt(date),'Meals','Tick each meal as you eat it. Log anything extra below.')}
+ <div class="grid g2">${card('Today vs your plan',bar3('Calories',t.k,tg.calories_kcal,'kcal')+bar3('Protein',t.p,tg.protein_g,'g'))}
+ ${card('Add something extra',`<form id="foodForm" class="formgrid"><div class="field full"><label>WHAT DID YOU EAT?</label><input name="food_name_snapshot" required placeholder="e.g. protein shake"/></div><div class="field"><label>CALORIES</label><input name="calories_kcal" type="number" min="0" step="0.1" inputmode="decimal" value="" required/></div><div class="field"><label>PROTEIN (G)</label><input name="protein_g" type="number" min="0" step="0.1" inputmode="decimal" value="0"/></div><input type="hidden" name="quantity" value="1"/><input type="hidden" name="unit" value="serving"/><input type="hidden" name="carbs_g" value="0"/><input type="hidden" name="fat_g" value="0"/><input type="hidden" name="fiber_g" value="0"/><button class="btn primary full">Add</button></form>`)}</div>
+ <div style="margin-top:16px">${card('Your meals',mealRows()+`<div class="row wrap" style="margin-top:12px"><button class="btn" id="addMealTemplate">+ Add a meal</button></div>`)}</div>
+ ${day.entries.length?`<div style="margin-top:16px">${card('Extras logged',day.entries.map(e=>`<div class="listitem"><div class="grow"><strong>${esc(e.food_name_snapshot)}</strong><small>${fmt(e.calories_kcal)} kcal · ${fmt(e.protein_g)} g protein</small></div><button class="btn sm danger" data-delfood="${e.id}">Delete</button></div>`).join(''))}</div>`:''}`;
+}
+
+/* ---------- Weight ---------- */
+let wRows=[];
+async function loadWeight(){wRows=await q(supabase.from('body_measurements').select('id,measured_on,weight_kg,body_fat_pct,notes').eq('user_id',user.id).not('weight_kg','is',null).order('measured_on',{ascending:true}).limit(365))}
+function spark(vals,goal){
+ if(vals.length<2)return '<div class="empty">Log at least two weigh-ins to see your trend.</div>';
+ const w=560,h=150,p=16,all=goal?vals.concat(goal):vals,lo=Math.min(...all)-.5,hi=Math.max(...all)+.5,X=i=>p+i*(w-2*p)/(vals.length-1),Y=v=>h-p-(v-lo)/(hi-lo)*(h-2*p);
+ return `<svg viewBox="0 0 ${w} ${h}" class="spark" role="img" aria-label="Weight trend"><polyline points="${vals.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1)).join(' ')}" fill="none" stroke="var(--lime)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${goal?`<line x1="${p}" x2="${w-p}" y1="${Y(goal)}" y2="${Y(goal)}" stroke="var(--orange)" stroke-dasharray="5 5"/>`:''}${vals.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="var(--lime)"/>`).join('')}</svg>`;
+}
+function weightV3(){
+ const goal=Number(aiActivePlan?.inputs?.target_weight_kg)||null,vals=wRows.map(r=>Number(r.weight_kg)),cur=vals.length?vals[vals.length-1]:null,first=vals.length?vals[0]:null;
+ const delta=cur!=null&&first!=null?cur-first:null;
+ return `${pageHead('BODY WEIGHT','Weight','One number, logged regularly. The trend matters, not any single day.')}
+ <div class="grid g3">${metric('CURRENT',cur!=null?fmt(cur):'—','kg',wRows.length?dateFmt(wRows[wRows.length-1].measured_on,{day:'numeric',month:'short'}):'No weigh-ins yet')}${metric('CHANGE',delta!=null?(delta>0?'+':'')+fmt(delta):'—','kg','Since your first weigh-in')}${metric('GOAL',goal?fmt(goal):'—','kg',goal&&cur!=null?fmt(Math.abs(cur-goal))+' kg to go':'Set in your plan')}</div>
+ <div class="grid g2" style="margin-top:16px">${card('Trend',spark(vals.slice(-60),goal))}
+ ${card('Log weight',`<form id="weightForm" class="formgrid"><div class="field"><label>DATE</label><input type="date" name="measured_on" value="${today()}" max="${today()}" required/></div><div class="field"><label>WEIGHT (KG)</label><input name="weight_kg" type="number" step="0.1" min="20" max="500" inputmode="decimal" required placeholder="80.0"/></div><button class="btn primary full">Save weigh-in</button></form><p class="muted small">Logging the same date again replaces that day's entry.</p>`)}</div>
+ <div style="margin-top:16px">${card('History',wRows.length?wRows.slice().reverse().slice(0,12).map(r=>`<div class="listitem"><div class="grow"><strong>${fmt(r.weight_kg)} kg</strong><small>${dateFmt(r.measured_on,{day:'numeric',month:'short',year:'numeric'})}</small></div><button class="btn sm danger" data-delweight="${r.id}">Delete</button></div>`).join(''):'<div class="empty">No weigh-ins yet.</div>')}</div>`;
+}
+async function saveWeightV3(e){
+ e.preventDefault();const f=new FormData(e.currentTarget),on=f.get('measured_on'),kg=Number(f.get('weight_kg'));
+ if(!(kg>=20&&kg<=500)){toast('Enter a weight between 20 and 500 kg.');return}
+ try{
+  const ex=await q(supabase.from('body_measurements').select('id').eq('user_id',user.id).eq('measured_on',on).limit(1));
+  if(ex.length)await q(supabase.from('body_measurements').update({weight_kg:kg}).eq('id',ex[0].id).eq('user_id',user.id));
+  else await q(supabase.from('body_measurements').insert({user_id:user.id,measured_on:on,weight_kg:kg}));
+  toast('Weight saved');await render();
+ }catch(err){fail(err)}
+}
+
+/* ---------- Prep & Grocery ---------- */
+let prepView='grocery';
+async function loadGroceries(){groceries=await q(supabase.from('grocery_items').select('*').eq('user_id',user.id).eq('week_start',weekStart(date)).order('sort_order'))}
+function prepV3(){
+ if(!aiActivePlan)return pageHead('PREP & GROCERY','Prep & Grocery','Shopping list and meal prep.')+needsPlanCard('shopping and prep');
+ const bought=groceries.filter(x=>x.is_purchased).length,donePrep=day.prep.filter(x=>x.is_completed).length;
+ const cats=['PROTEIN','DAIRY','PRODUCE','PANTRY'];
+ const groc=`<form id="groceryForm" class="row addrow"><input name="name" required placeholder="Add an item"/><input name="quantity" placeholder="Qty" style="max-width:110px"/><input type="hidden" name="category" value="PRODUCE"/><button class="btn primary">Add</button></form>
+ ${groceries.length?cats.map(c=>{const items=groceries.filter(x=>(x.category||'PRODUCE')===c);return items.length?`<h3 class="eyebrow cat">${c} <span>${items.filter(x=>x.is_purchased).length}/${items.length}</span></h3>${items.map(x=>`<label class="listitem tick-row"><input type="checkbox" data-grocery="${x.id}" ${x.is_purchased?'checked':''}/><div class="grow"><strong class="${x.is_purchased?'struck':''}">${esc(x.name)}</strong><small>${esc(x.quantity||'')}</small></div><button class="btn sm ghost" data-delgrocery="${x.id}" aria-label="Remove ${esc(x.name)}">✕</button></label>`).join('')}`:''}).join(''):'<div class="empty">Nothing on the list this week.</div>'}`;
+ const prep=`<form id="prepForm" class="row addrow"><input name="task" required placeholder="Add a prep task"/><button class="btn primary">Add</button></form>
+ ${day.prep.length?day.prep.map(t=>`<label class="listitem tick-row"><input type="checkbox" data-prep="${t.id}" ${t.is_completed?'checked':''}/><div class="grow"><strong class="${t.is_completed?'struck':''}">${esc(t.task)}</strong></div><button class="btn sm ghost" data-delprep="${t.id}" aria-label="Remove task">✕</button></label>`).join(''):'<div class="empty">No prep tasks for this day.</div>'}`;
+ return `${pageHead('PREP & GROCERY','Prep & Grocery','Shop once, prep once, eat on plan.')}
+ <div class="seg" role="tablist"><button role="tab" data-prepview="grocery" class="${prepView==='grocery'?'on':''}">Groceries <small>${bought}/${groceries.length}</small></button><button role="tab" data-prepview="prep" class="${prepView==='prep'?'on':''}">Meal prep <small>${donePrep}/${day.prep.length}</small></button></div>
+ ${card(prepView==='grocery'?'This week’s groceries':'Prep for '+dateFmt(date,{day:'numeric',month:'short'}),prepView==='grocery'?groc:prep)}`;
+}
+
+/* ---------- Workout logger ---------- */
+const WK_KEY=()=>'cut_wk_'+(user?.id||'x');
+let wk=null,wkHist=null,wkSessions=[],wkTick=null,wkRest=null,wkRestDefault=90;
+const e1rm=(kg,reps)=>kg>0&&reps>0?kg*(1+reps/30):0;
+const volOf=ex=>ex.reduce((a,e)=>a+e.sets.filter(s=>s.done).reduce((b,s)=>b+(Number(s.kg)||0)*(Number(s.reps)||0),0),0);
+function parsePlanExercise(raw){
+ const s=String(raw||'').trim();
+ const sm=s.match(/(\d+)\s*(?:sets?\b|[x×])/i),rm=s.match(/[x×]\s*(\d+)/i)||s.match(/(\d+)(?:\s*[-–]\s*\d+)?\s*reps?/i);
+ const name=s.replace(/\s*[:(–—].*$/,'').replace(/\s+\d+\s*(?:sets?\b|[x×]).*$/i,'').trim()||s;
+ return {name:name.slice(0,60),sets:Math.min(8,Math.max(1,Number(sm?.[1])||3)),reps:Number(rm?.[1])||10};
+}
+async function loadWkHistory(){
+ const rows=await q(supabase.from('workout_exercises').select('exercise_name,created_at,workout_sets(set_number,reps,weight_kg)').eq('user_id',user.id).order('created_at',{ascending:false}).limit(300));
+ const map={};
+ rows.forEach(r=>{const k=r.exercise_name.trim().toLowerCase(),sets=(r.workout_sets||[]).slice().sort((a,b)=>a.set_number-b.set_number),m=map[k]??={last:null,best1:0,name:r.exercise_name};if(!m.last&&sets.length)m.last=sets;sets.forEach(s=>{m.best1=Math.max(m.best1,e1rm(Number(s.weight_kg)||0,Number(s.reps)||0))})});
+ wkHist=map;
+ wkSessions=await q(supabase.from('workout_sessions').select('id,title,local_date,duration_minutes,perceived_effort,workout_exercises(exercise_name,sort_order,workout_sets(set_number,reps,weight_kg))').eq('user_id',user.id).order('local_date',{ascending:false}).order('created_at',{ascending:false}).limit(8));
+}
+function wkMakeEx(name,n=3,reps=10){
+ const h=wkHist?.[name.trim().toLowerCase()],prev=h?.last||[],last=prev[prev.length-1];
+ return {name,pr:false,sets:Array.from({length:n},(_,i)=>({kg:(prev[i]||last)?.weight_kg??'',reps:(prev[i]||last)?.reps??reps,done:false,pr:false}))};
+}
+const wkSave=()=>{try{wk?localStorage.setItem(WK_KEY(),JSON.stringify(wk)):localStorage.removeItem(WK_KEY())}catch{}};
+function wkLoadDraft(){if(wk)return;try{const d=JSON.parse(localStorage.getItem(WK_KEY())||'null');if(d&&d.exs&&Date.now()-d.startedAt<18*3600e3)wk=d}catch{}}
+function planSessions(){return (aiActivePlan?.plan?.training_week||[]).map((d,i)=>({i,...d})).filter(d=>Number(d.session_minutes)>0&&!/rest|recover|mobility|stretch|walk|light cardio|off\b/i.test(String(d.focus||'')))}
+function todaySession(){
+ const names=['sun','mon','tue','wed','thu','fri','sat'],dow=names[new Date(today()+'T12:00:00').getDay()];
+ return planSessions().find(d=>String(d.day).toLowerCase().startsWith(dow))||null;
+}
+async function wkBegin(idx){
+ if(!wkHist){try{await loadWkHistory()}catch(e){console.error(e);wkHist={}}}
+ let title='Workout',exs=[];
+ if(idx!=='empty'){const d=(aiActivePlan?.plan?.training_week||[])[Number(idx)];if(d){title=(d.focus||d.day||'Workout');exs=(d.exercises||[]).map(parsePlanExercise).map(x=>wkMakeEx(x.name,x.sets,x.reps))}}
+ wk={title,startedAt:Date.now(),date:today(),exs,effort:null,notes:'',best:{}};wkRest=null;wkSave();renderWk();
+}
+function renderWk(keepScroll){const y=window.scrollY;$('#pagebody').innerHTML=workoutV3();wireWk();wireV3();if(keepScroll)window.scrollTo(0,y)}
+function fmtClock(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function wkTickFn(){
+ const c=$('#wkClock');if(!c||!wk){clearInterval(wkTick);wkTick=null;return}
+ c.textContent=fmtClock(Math.floor((Date.now()-wk.startedAt)/1000));
+ const r=$('#wkRestBar');if(!r)return;
+ if(wkRest&&wkRest>Date.now()){const left=Math.ceil((wkRest-Date.now())/1000);r.classList.remove('hidden');$('#wkRestT').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0')}
+ else{if(wkRest){wkRest=null;if(navigator.vibrate)navigator.vibrate([120,60,120]);toast('Rest is over. Next set.')}r.classList.add('hidden')}
+}
+function wkToggle(xi,si){
+ const e=wk.exs[xi],s=e.sets[si];s.done=!s.done;
+ if(s.done){
+  const kg=Number(s.kg)||0,rp=Number(s.reps)||0,h=wkHist?.[e.name.trim().toLowerCase()],v=e1rm(kg,rp),prev=Math.max(h?.best1||0,wk.best[e.name]||0);
+  s.kg=s.kg===''?'':kg;s.reps=rp;
+  if(h?.best1&&v>prev+.01){s.pr=true;toast('New PR on '+e.name)}
+  wk.best[e.name]=Math.max(wk.best[e.name]||0,v);
+  wkRest=Date.now()+wkRestDefault*1000;if(navigator.vibrate)navigator.vibrate(15);
+ }else{s.pr=false;wkRest=null}
+ e.pr=e.sets.some(x=>x.pr);wkSave();renderWk(true);
+}
+function workoutV3(){
+ if(!aiActivePlan)return pageHead('TRAINING','Workout','Log every set, live.')+needsPlanCard('training');
+ wkLoadDraft();
+ return wk?wkLive():wkStartView();
+}
+function wkStartView(){
+ const ts=todaySession(),all=planSessions();
+ const hist=wkSessions.map(s=>{const exs=(s.workout_exercises||[]).slice().sort((a,b)=>a.sort_order-b.sort_order);const vol=exs.reduce((a,e)=>a+(e.workout_sets||[]).reduce((b,x)=>b+(Number(x.weight_kg)||0)*(Number(x.reps)||0),0),0);
+  return `<details class="wk-hist"><summary><span><strong>${esc(s.title)}</strong><small>${dateFmt(s.local_date,{day:'numeric',month:'short'})} · ${s.duration_minutes||0} min · ${fmt(vol)} kg${s.perceived_effort?' · RPE '+s.perceived_effort:''}</small></span><button class="btn sm ghost" data-delworkout="${s.id}" aria-label="Delete session">✕</button></summary>${exs.map(e=>`<div class="wk-hx"><b>${esc(e.exercise_name)}</b><span>${(e.workout_sets||[]).slice().sort((a,b)=>a.set_number-b.set_number).map(x=>`${fmt(x.weight_kg)}×${x.reps}`).join(' · ')}</span></div>`).join('')}</details>`}).join('');
+ return `${pageHead('TRAINING','Workout','Open a session, log each set as you do it.')}
+ ${card(ts?'Today · '+esc(ts.day):'No session planned today',ts?`<h2 class="wk-hero">${esc(ts.focus)}</h2><p class="muted small">${Number(ts.session_minutes)||0} min · ${(ts.exercises||[]).length} exercises</p><div class="wk-chips">${(ts.exercises||[]).slice(0,6).map(x=>`<span>${esc(parsePlanExercise(x).name)}</span>`).join('')}</div><button class="btn primary wk-go" data-wkstart="${ts.i}">Start workout</button>`:`<p class="muted">Rest day by your plan. You can still start a session if you want one.</p><button class="btn primary wk-go" data-wkstart="empty">Start an empty workout</button>`)}
+ ${all.length>(ts?1:0)?`<div style="margin-top:16px">${card('Other sessions in your plan',all.filter(d=>!ts||d.i!==ts.i).map(d=>`<div class="listitem"><div class="grow"><strong>${esc(d.day)} · ${esc(d.focus)}</strong><small>${Number(d.session_minutes)||0} min · ${(d.exercises||[]).length} exercises</small></div><button class="btn sm" data-wkstart="${d.i}">Start</button></div>`).join('')+`<div class="row" style="margin-top:10px"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout</button></div>`)}</div>`:(ts?`<div class="row" style="margin-top:12px"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout instead</button></div>`:'')}
+ <div style="margin-top:16px">${card('Recent sessions',hist||'<div class="empty">Your finished sessions show up here with every set.</div>')}</div>
+ <details class="wk-edit" style="margin-top:16px"><summary>Edit your weekly training plan</summary>${trainingWeekEditor()}</details>`;
+}
+function wkLive(){
+ const done=wk.exs.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0),total=wk.exs.reduce((a,e)=>a+e.sets.length,0),names=[...new Set([...(aiActivePlan?.plan?.training_week||[]).flatMap(d=>(d.exercises||[]).map(x=>parsePlanExercise(x).name)),...Object.values(wkHist||{}).map(h=>h.name)])];
+ return `<div class="wk">
+ <div class="wk-top"><div class="grow"><input class="wk-title" id="wkTitle" value="${esc(wk.title)}" aria-label="Workout name" maxlength="60"/><div class="wk-meta"><span id="wkClock">00:00</span><span>${done}/${total} sets</span><span>${fmt(volOf(wk.exs))} kg</span></div></div><div class="row"><button class="btn ghost" id="wkDiscard">Discard</button><button class="btn primary" id="wkFinish">Finish</button></div></div>
+ <div class="progress"><i style="width:${total?done/total*100:0}%"></i></div>
+ <div class="wk-restpick"><span class="muted small">REST TIMER</span>${[60,90,120,180].map(s=>`<button class="chip ${wkRestDefault===s?'on':''}" data-wkrest="${s}">${s/60>=1&&s%60===0?s/60+' min':s+' s'}</button>`).join('')}</div>
+ ${wk.exs.map((e,xi)=>{const h=wkHist?.[e.name.trim().toLowerCase()],prev=h?.last?h.last.map(x=>`${fmt(x.weight_kg)}×${x.reps}`).join('  ·  '):'First time — no history yet';
+  return `<section class="card wk-ex"><div class="row between"><h3>${esc(e.name)}${e.pr?' <span class="pr">PR</span>':''}</h3><button class="btn sm ghost" data-wkdelex="${xi}" aria-label="Remove ${esc(e.name)}">✕</button></div><div class="wk-prev">Last time: ${prev}</div>
+  <div class="wk-sets"><div class="wk-h"><span>SET</span><span>KG</span><span>REPS</span><span></span></div>${e.sets.map((s,si)=>`<div class="wk-set ${s.done?'done':''}"><span class="n">${si+1}</span><input inputmode="decimal" data-wk="${xi}:${si}:kg" value="${esc(s.kg)}" placeholder="0" aria-label="Set ${si+1} weight in kg"/><input inputmode="numeric" data-wk="${xi}:${si}:reps" value="${esc(s.reps)}" placeholder="0" aria-label="Set ${si+1} reps"/><button class="tick" data-wktick="${xi}:${si}" aria-pressed="${s.done}" aria-label="Mark set ${si+1} done">${s.done?'✓':''}</button></div>`).join('')}</div>
+  <div class="row"><button class="btn sm" data-wkaddset="${xi}">+ Add set</button><button class="btn sm ghost" data-wkdelset="${xi}">− Remove set</button></div></section>`}).join('')}
+ <section class="card"><form id="wkAddEx" class="row addrow"><input name="name" list="wkNames" placeholder="Add an exercise…" required maxlength="60" autocomplete="off"/><datalist id="wkNames">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist><button class="btn primary">Add</button></form></section>
+ <div class="wk-restbar hidden" id="wkRestBar"><span>Rest <b id="wkRestT">0:00</b></span><button class="btn sm" id="wkRestAdd">+15 s</button><button class="btn sm primary" id="wkRestSkip">Skip</button></div>
+ </div>`;
+}
+function wkFinishModal(){
+ const done=wk.exs.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
+ if(!done){toast('Tick off at least one set before finishing.');return}
+ const prs=wk.exs.filter(e=>e.pr).map(e=>e.name),mins=Math.max(1,Math.round((Date.now()-wk.startedAt)/60000));
+ const m=document.createElement('div');m.className='modal-bg';m.id='wkModal';
+ m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-label="Finish workout"><div class="eyebrow">WORKOUT COMPLETE</div><h2>${esc(wk.title)}</h2>
+ <div class="grid g3 wk-sum"><div><b>${mins}</b><small>minutes</small></div><div><b>${done}</b><small>sets</small></div><div><b>${fmt(volOf(wk.exs))}</b><small>kg volume</small></div></div>
+ ${prs.length?`<p class="pr-line">New PR: ${prs.map(esc).join(', ')}</p>`:''}
+ <label class="muted small">HOW HARD WAS IT? (1–10)</label><div class="rpe">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="chip" data-rpe="${n}">${n}</button>`).join('')}</div>
+ <textarea id="wkNotes" rows="2" placeholder="Notes (optional)" maxlength="500"></textarea>
+ <div class="row" style="margin-top:12px"><button class="btn ghost" id="wkBack">Keep going</button><button class="btn primary grow" id="wkSaveBtn">Save workout</button></div></div>`;
+ document.body.appendChild(m);
+ m.querySelectorAll('[data-rpe]').forEach(b=>b.onclick=()=>{wk.effort=Number(b.dataset.rpe);m.querySelectorAll('[data-rpe]').forEach(x=>x.classList.toggle('on',x===b))});
+ $('#wkBack').onclick=()=>m.remove();
+ $('#wkSaveBtn').onclick=async()=>{const b=$('#wkSaveBtn');b.disabled=true;b.textContent='Saving…';wk.notes=$('#wkNotes').value.trim();try{const vol=volOf(wk.exs);await wkPersist();m.remove();toast('Workout saved · '+fmt(vol)+' kg'+(prs.length?' · '+prs.length+' PR'+(prs.length>1?'s':''):''));wk=null;wkRest=null;wkSave();wkHist=null;await render()}catch(e){fail(e);b.disabled=false;b.textContent='Save workout'}};
+}
+async function wkPersist(){
+ const exs=wk.exs.map(e=>({...e,sets:e.sets.filter(s=>s.done)})).filter(e=>e.sets.length);
+ const ses=await q(supabase.from('workout_sessions').insert({user_id:user.id,local_date:wk.date,started_at:new Date(wk.startedAt).toISOString(),duration_minutes:Math.min(1440,Math.max(1,Math.round((Date.now()-wk.startedAt)/60000))),workout_type:'strength',title:(wk.title||'Workout').trim().slice(0,60)||'Workout',notes:wk.notes||null,perceived_effort:wk.effort||null}).select('id').single());
+ try{
+  const exRows=await q(supabase.from('workout_exercises').insert(exs.map((e,i)=>({user_id:user.id,workout_session_id:ses.id,exercise_name:e.name,sort_order:i}))).select('id,sort_order'));
+  const sets=[];exRows.forEach(r=>{exs[r.sort_order].sets.forEach((s,i)=>sets.push({user_id:user.id,workout_exercise_id:r.id,set_number:i+1,reps:Math.max(0,Math.round(Number(s.reps)||0)),weight_kg:Math.max(0,Number(s.kg)||0)}))});
+  if(sets.length)await q(supabase.from('workout_sets').insert(sets));
+ }catch(e){await supabase.from('workout_sessions').delete().eq('id',ses.id).eq('user_id',user.id);throw e}
+}
+function wireWk(){
+ const pb=$('#pagebody');if(!pb||!wk)return;
+ pb.querySelectorAll('[data-wk]').forEach(inp=>inp.oninput=()=>{const [xi,si,k]=inp.dataset.wk.split(':');wk.exs[xi].sets[si][k==='kg'?'kg':'reps']=inp.value;wkSave()});
+ pb.querySelectorAll('[data-wktick]').forEach(b=>b.onclick=()=>{const [xi,si]=b.dataset.wktick.split(':').map(Number);wkToggle(xi,si)});
+ pb.querySelectorAll('[data-wkaddset]').forEach(b=>b.onclick=()=>{const e=wk.exs[Number(b.dataset.wkaddset)],l=e.sets[e.sets.length-1];e.sets.push({kg:l?.kg??'',reps:l?.reps??10,done:false,pr:false});wkSave();renderWk(true)});
+ pb.querySelectorAll('[data-wkdelset]').forEach(b=>b.onclick=()=>{const e=wk.exs[Number(b.dataset.wkdelset)];if(e.sets.length>1){e.sets.pop();wkSave();renderWk(true)}});
+ pb.querySelectorAll('[data-wkdelex]').forEach(b=>b.onclick=()=>{const e=wk.exs[Number(b.dataset.wkdelex)];if(e.sets.some(s=>s.done)&&!confirm('Remove '+e.name+' and its logged sets?'))return;wk.exs.splice(Number(b.dataset.wkdelex),1);wkSave();renderWk(true)});
+ pb.querySelectorAll('[data-wkrest]').forEach(b=>b.onclick=()=>{wkRestDefault=Number(b.dataset.wkrest);renderWk(true)});
+ $('#wkTitle').oninput=e=>{wk.title=e.target.value;wkSave()};
+ $('#wkAddEx').onsubmit=e=>{e.preventDefault();const n=new FormData(e.currentTarget).get('name').trim();if(!n)return;wk.exs.push(wkMakeEx(n));wkSave();renderWk(true);setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),30)};
+ $('#wkFinish').onclick=wkFinishModal;
+ $('#wkDiscard').onclick=()=>{if(!confirm('Discard this workout? Nothing will be saved.'))return;wk=null;wkRest=null;wkSave();renderWk()};
+ $('#wkRestAdd').onclick=()=>{wkRest=Math.max(wkRest||0,Date.now())+15000};
+ $('#wkRestSkip').onclick=()=>{wkRest=null};
+ clearInterval(wkTick);wkTick=setInterval(wkTickFn,500);wkTickFn();
+}
+
+/* ---------- wiring for the v3 pages ---------- */
+function wireV3(){
+ document.querySelectorAll('[data-wkstart]').forEach(b=>b.onclick=()=>wkBegin(b.dataset.wkstart));
+ document.querySelectorAll('[data-prepview]').forEach(b=>b.onclick=()=>{prepView=b.dataset.prepview;render()});
+ document.querySelectorAll('[data-delweight]').forEach(b=>b.onclick=()=>deleteRow('body_measurements',b.dataset.delweight,'weight'));
+ $('#weightForm')?.addEventListener('submit',saveWeightV3);
+}
+
+/* ---------- email verification modal ---------- */
+function showVerifyModal(email,password){
+ document.getElementById('verifyModal')?.remove();
+ const m=document.createElement('div');m.className='modal-bg';m.id='verifyModal';
+ m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="vmTitle"><div class="mail-ico">✉</div><h2 id="vmTitle">Verify your email</h2><p class="muted">We sent a verification link to<br><b>${esc(email)}</b>.<br>Open it, then come back here and press the button.</p><p class="muted small" id="vmMsg" role="status"></p>
+ <button class="btn primary" id="vmDone" style="width:100%">I have verified</button><div class="row vm-sub"><button class="btn ghost" id="vmResend">Resend email</button><button class="btn ghost" id="vmChange">Use a different email</button></div></div>`;
+ document.body.appendChild(m);
+ const msg=t=>{$('#vmMsg').textContent=t};
+ $('#vmDone').onclick=async()=>{const b=$('#vmDone');b.disabled=true;b.textContent='Checking…';try{const {data,error}=await supabase.auth.signInWithPassword({email,password});if(error){if(/confirm/i.test(error.message))msg('Not verified yet. Open the link in your email first, then try again.');else msg(error.message);return}if(!document.getElementById('verifyModal'))return;session=data.session;m.remove();await bootstrap()}catch(e){msg(e.message)}finally{b.disabled=false;b.textContent='I have verified'}};
+ let cool=0;const rb=$('#vmResend');
+ rb.onclick=async()=>{if(cool>0)return;try{const {error}=await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:location.origin}});if(error)throw error;msg('Sent again. Check your inbox and spam folder.');cool=30;rb.disabled=true;const t=setInterval(()=>{cool--;rb.textContent=cool>0?'Resend in '+cool+'s':'Resend email';if(cool<=0){rb.disabled=false;clearInterval(t)}},1000)}catch(e){msg(e.message)}};
+ $('#vmChange').onclick=()=>m.remove();
+ $('#vmDone').focus();
 }
 
 const {data:{session:initial}}=await supabase.auth.getSession();session=initial;if(session&&!recoveryMode)await bootstrap();else if(!recoveryMode)renderAuthV2();
