@@ -308,6 +308,7 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
   let transcript = msgs.map((m: { role: string; content: string }) => `${m.role === "user" ? "USER" : "COACH"}: ${m.content}`).join("\n");
   let draftId: string | null = null;
   let draftTitle: string | null = null;
+  let draftFacts = ""; // real numbers of the saved draft, appended to the reply so the prose can never contradict it
   let kept = false;
 
   const MAX_STEPS = 8;
@@ -324,7 +325,7 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
     }
     // deno-lint-ignore no-explicit-any
     const j = (out.json ?? {}) as any;
-    if (typeof j.final === "string" && j.final.trim()) return reply({ reply: j.final.trim().slice(0, 1200), draft_id: draftId, draft_title: draftTitle, kept });
+    if (typeof j.final === "string" && j.final.trim()) return reply({ reply: (j.final.trim().slice(0, 900) + (draftFacts ? `\n\n${draftFacts}` : "")).slice(0, 1300), draft_id: draftId, draft_title: draftTitle, kept });
     const tool = String(j.tool ?? "");
     const args = j.args ?? {};
     let result: unknown;
@@ -374,7 +375,15 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
               user_id: userId, title: String(g.plan.title), status: "draft", inputs: profile, plan: g.plan, model: g.model, prompt_version: PROMPT_VERSION,
             }).select("id,title").single();
             if (error) result = { error: "Could not save the draft." };
-            else { draftId = row.id; draftTitle = row.title; result = { draft_id: row.id, title: row.title, note: "Draft saved. The user must apply it; nothing has changed yet." }; }
+            else {
+              draftId = row.id; draftTitle = row.title;
+              // deno-lint-ignore no-explicit-any
+              const tg = (g.plan.targets ?? {}) as any;
+              // deno-lint-ignore no-explicit-any
+              const sessions = ((g.plan.training_week ?? []) as any[]).filter((d) => Number(d.session_minutes) > 0 && !/rest|recover|mobility|stretch|walk|light cardio|off\b/i.test(String(d.focus ?? ""))).length;
+              draftFacts = `Draft targets: ${tg.calories_kcal} kcal, ${tg.protein_g} g protein, ${tg.carbs_g} g carbs, ${tg.fat_g} g fat, ${sessions} training sessions. Apply it to use it.`;
+              result = { draft_id: row.id, title: row.title, note: "Draft saved. The user must apply it; nothing has changed yet. Do NOT state any calorie, protein or other numbers in your final answer: the exact draft numbers are appended automatically. Describe the changes qualitatively only." };
+            }
           }
         }
       } else if (tool === "keep_my_version") {
