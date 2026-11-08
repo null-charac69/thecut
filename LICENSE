@@ -1,21 +1,37 @@
-MIT License
+PROPRIETARY SOFTWARE LICENSE - ALL RIGHTS RESERVED
 
-Copyright (c) 2026 Anant Thakur
+Copyright (c) 2026 Anant Kumar Thakur. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+THE CUT 2.0 (the "Software"), including its source code, database schema,
+migrations, prompts, documentation and design, is the proprietary and
+confidential property of Anant Kumar Thakur (the "Owner").
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. NO LICENSE GRANTED. No right or license is granted to any person to use,
+   copy, modify, merge, publish, distribute, sublicense, sell, host, or create
+   derivative works of the Software, in whole or in part, except with the
+   Owner's prior written permission.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. NO DISTRIBUTION. The Software must not be redistributed or made available
+   to any third party in source or binary form, including via public or
+   private repositories, package registries, file shares, or hosted services.
+
+3. NO REVERSE ENGINEERING. You must not reverse engineer, decompile, or
+   extract prompts, schemas, or logic from the Software except as permitted by
+   law that cannot be excluded by contract.
+
+4. NO AI TRAINING. The Software and its contents must not be used to train,
+   fine-tune, or evaluate machine learning models without written permission.
+
+5. VIEWING. Where the Software is visible to you only because it is hosted in
+   a repository you were given access to, that access is for review by the
+   Owner's invitation and confers no other rights.
+
+6. OWNERSHIP. All title and intellectual property rights remain with the Owner.
+
+7. NO WARRANTY. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM,
+   DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+Third-party components remain under their own licenses.
+
+For permission requests, contact the Owner.
