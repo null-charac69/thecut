@@ -310,7 +310,11 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
   let draftTitle: string | null = null;
   let kept = false;
 
-  for (let step = 0; step < 5; step++) {
+  const MAX_STEPS = 8;
+  const called = new Set<string>();
+  for (let step = 0; step < MAX_STEPS; step++) {
+    // Some models spend their whole budget on read tools. Force an answer on the last two steps.
+    if (step >= MAX_STEPS - 2) transcript += `\nSYSTEM_NOTE: You have enough information. Reply now with ONLY {"final":"..."}.`;
     let out;
     try {
       out = await chatJson({ system: CHAT_SYSTEM, user: `<user_data>\n${transcript}\n</user_data>\nReply with the next JSON.`, maxTokens: 1500, temperature: 0.3 });
@@ -324,6 +328,12 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
     const tool = String(j.tool ?? "");
     const args = j.args ?? {};
     let result: unknown;
+    const sig = tool + JSON.stringify(args);
+    if (called.has(sig) && tool !== "propose_plan_update") {
+      transcript += `\nCOACH_TOOL_CALL: ${JSON.stringify({ tool, args })}\nTOOL_RESULT: ${JSON.stringify({ note: "You already called this tool with these arguments. Use the earlier result and reply with {\"final\":\"...\"}." })}`;
+      continue;
+    }
+    called.add(sig);
     try {
       if (tool === "get_live_plan") result = await liveState(sb);
       else if (tool === "get_profile") result = (await activeInputs(sb))?.inputs ?? null;
