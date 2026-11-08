@@ -57,9 +57,28 @@ export function parseLooseJson(text: string): unknown {
   try {
     return JSON.parse(fenced);
   } catch { /* fall through */ }
+  // Models sometimes emit several objects back to back (e.g. a tool call followed by an invented answer).
+  // Take the FIRST balanced, string-aware JSON object.
   const a = trimmed.indexOf("{");
-  const b = trimmed.lastIndexOf("}");
-  if (a >= 0 && b > a) return JSON.parse(trimmed.slice(a, b + 1));
+  if (a >= 0) {
+    let depth = 0, inStr = false, esc = false;
+    for (let i = a; i < trimmed.length; i++) {
+      const ch = trimmed[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === "\\") esc = true;
+        else if (ch === '"') inStr = false;
+      } else if (ch === '"') inStr = true;
+      else if (ch === "{") depth++;
+      else if (ch === "}" && --depth === 0) {
+        try {
+          return JSON.parse(trimmed.slice(a, i + 1));
+        } catch { break; }
+      }
+    }
+    const b = trimmed.lastIndexOf("}");
+    if (b > a) return JSON.parse(trimmed.slice(a, b + 1));
+  }
   throw new LlmError("The AI returned a response that was not valid JSON.", 502);
 }
 
