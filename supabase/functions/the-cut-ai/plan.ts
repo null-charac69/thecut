@@ -174,7 +174,8 @@ export function qualityChecks(plan: any, profile: any, refKcal?: number | null):
     if (days === 0 && n > 0) out.push("the user asked for no training days; training_week must contain only rest or light recovery.");
   }
   const kcal = num(plan.targets?.calories_kcal, 0);
-  if (refKcal && kcal && Math.abs(kcal - refKcal) / refKcal > 0.2) {
+  // A baseline below the safety floor is not a sane anchor, so the drift check is skipped for it.
+  if (refKcal && refKcal >= MIN_DAILY_KCAL && kcal && Math.abs(kcal - refKcal) / refKcal > 0.2) {
     out.push(`daily calories ${kcal} kcal drift more than 20% from the user's accepted plan (${Math.round(refKcal)} kcal). Stay within 20% of it unless the instruction clearly requires a bigger change, and never go below ${MIN_DAILY_KCAL} kcal.`);
   }
   return out;
