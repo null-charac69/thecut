@@ -80,7 +80,7 @@ async function review(supabase: any) {
     const r = await chatJson({
       system: REVIEW_SYSTEM,
       user: `<user_data>\n${JSON.stringify(summary).slice(0, 6000)}\n</user_data>\nWrite the weekly review.`,
-      fast: true,
+      fast: false, // the 20b model emits malformed JSON too often; review is infrequent so use the main model
       maxTokens: 700,
       temperature: 0.3,
     });

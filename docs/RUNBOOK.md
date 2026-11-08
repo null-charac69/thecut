@@ -21,3 +21,12 @@
 - Remove QA edge functions `auth-smoke-qa`, `ai-smoke-qa` (verify_jwt off).
 - Enable leaked-password protection in Supabase Auth settings.
 - `src/api/ai-plan.js` is legacy; the app now calls the edge function.
+
+## AWS Bedrock provider (SigV4, no API key)
+Set these Supabase Edge Function secrets: `LLM_BASE_URL=https://bedrock-runtime.<region>.amazonaws.com/openai/v1`, `LLM_AWS_ACCESS_KEY_ID`, `LLM_AWS_SECRET_ACCESS_KEY`, `LLM_AWS_REGION`, `LLM_MODEL=openai.gpt-oss-120b-1:0`. The IAM user only needs `bedrock:InvokeModel`. Use the 120b model for both plan and weekly review: the 20b model emits malformed JSON. The adapter strips `<reasoning>` blocks and retries once on bad JSON.
+
+## Production release checklist
+1. Migration `20261108_agent_layer.sql` applied (agent_insights, triggers, RPCs).
+2. Edge function `the-cut-ai` deployed (verify_jwt on) and `generate` + `review` return 200.
+3. Preview: first login lands on AI Planner with other tabs locked; generating a plan unlocks them; Apply creates an active plan and a "Plan applied" insight; Review my week works; the tour runs 9 steps.
+4. Merge `feat/2.0` into `main` (Vercel auto-deploys production), then smoke test production.
