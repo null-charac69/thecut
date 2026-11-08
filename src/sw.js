@@ -1,0 +1,4 @@
+self.addEventListener('install',event=>{event.waitUntil(self.skipWaiting())});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{await self.clients.claim()})())});
+self.addEventListener('push',event=>{let payload={title:'THE CUT',body:'You have a reminder.',url:'/'};try{if(event.data)payload={...payload,...event.data.json()}}catch(_){}event.waitUntil(self.registration.showNotification(payload.title,{body:payload.body,icon:'/favicon.ico',badge:'/favicon.ico',tag:payload.tag||'the-cut-push',data:{url:payload.url||'/'}}))});
+self.addEventListener('notificationclick',event=>{event.notification.close();const target=new URL(event.notification.data?.url||'/',self.location.origin).href;event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{for(const c of list){if(c.url===target&&'focus'in c)return c.focus()}return self.clients.openWindow?self.clients.openWindow(target):undefined}))});
