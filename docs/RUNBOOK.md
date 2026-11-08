@@ -20,7 +20,7 @@
 - Rotate the Groq key (it was shared in chat).
 - Remove QA edge functions `auth-smoke-qa`, `ai-smoke-qa` (verify_jwt off).
 - Enable leaked-password protection in Supabase Auth settings.
-- `src/api/ai-plan.js` is legacy; the app now calls the edge function.
+- The legacy `src/api/ai-plan.js` proxy was removed; the app calls the `the-cut-ai` edge function directly.
 
 ## AWS Bedrock provider (SigV4, no API key)
 Set these Supabase Edge Function secrets: `LLM_BASE_URL=https://bedrock-runtime.<region>.amazonaws.com/openai/v1`, `LLM_AWS_ACCESS_KEY_ID`, `LLM_AWS_SECRET_ACCESS_KEY`, `LLM_AWS_REGION`, `LLM_MODEL=openai.gpt-oss-120b-1:0`. The IAM user only needs `bedrock:InvokeModel`. Use the 120b model for both plan and weekly review: the 20b model emits malformed JSON. The adapter strips `<reasoning>` blocks and retries once on bad JSON.
