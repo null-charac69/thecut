@@ -1,6 +1,5 @@
 // THE CUT — AI planner/coach edge function (user-triggered, JWT required).
-// Actions: "generate" (fresh plan), "refine" (revise from profile edits / a coach message).
-// Response shape is identical to the legacy /api/ai-plan route: { plan, model, prompt_version }.
+// Actions: generate, refine, review, assess (judge the user's direct plan edits), chat (tool-using coach).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { chatJson, LlmError } from "./llm.ts";
@@ -405,23 +404,12 @@ Deno.serve(async (req: Request) => {
       : "Create a fresh plan for this profile.");
 
   try {
-    let attempt = await chatJson({ system: SYSTEM, user: userPrompt, maxTokens: 4500, temperature: 0.3 });
-    let result = normalizePlan(attempt.json);
-    if (!result.plan) {
-      // One corrective retry that tells the model exactly what was wrong.
-      attempt = await chatJson({
-        system: SYSTEM,
-        user: userPrompt + `\nYour previous answer was rejected: ${result.problems.join(" ")} Return a corrected JSON object.`,
-        maxTokens: 4500,
-        temperature: 0.2,
-      });
-      result = normalizePlan(attempt.json);
-    }
-    if (!result.plan) {
-      console.error("Plan rejected", result.problems);
+    const g = await runPlan(userPrompt);
+    if (!g.plan) {
+      console.error("Plan rejected", g.problems);
       return reply({ error: "The AI produced a plan that failed safety checks. Please try again." }, 422);
     }
-    return reply({ plan: result.plan, model: attempt.model, prompt_version: PROMPT_VERSION });
+    return reply({ plan: g.plan, model: g.model, prompt_version: PROMPT_VERSION });
   } catch (e) {
     if (e instanceof LlmError) return reply({ error: e.message }, e.status);
     console.error("the-cut-ai failure", String(e));
