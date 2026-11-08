@@ -115,7 +115,7 @@ img,svg,canvas{max-width:100%}.table{display:block;max-width:100%;overflow-x:aut
 .num,.ai-target strong{font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
-</head>
+<style>.pe-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.pe-changes{margin:6px 0 0 18px;font-size:12px;opacity:.85}.coach-chat .chat-msg{margin:8px 0;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04)}.coach-chat .chat-msg.assistant{border-left:3px solid #c8f169}.coach-chat .chat-msg p{margin:4px 0 0;white-space:pre-wrap}.chat-form{display:flex;gap:8px;margin-top:10px}.chat-form input{flex:1}</style></head>
 <body>
 <div id="root"><div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><div class="muted">Connecting securely…</div><span class="loader"></span></div></div></div>
 <div id="toast" class="toast hidden"></div>
@@ -381,6 +381,7 @@ async function initV2(pr){
  let seen=false;try{seen=localStorage.getItem('cut_tour_'+user.id)==='1'}catch{}
  tourState={done:!!pr?.tour_completed_at||seen,open:false,step:0,started:false};
  subscribeInsights();
+ if(aiUnlocked)setTimeout(runAssess,4000);
 }
 
 /* ---- coach insights (rows are written by database rules; this just shows them live) ---- */
@@ -409,10 +410,10 @@ function refreshCoachDom(){
 function coachPanel(full){
  if(!insightsEnabled&&!coachReview)return full?`<section class="card coach" id="coach"><div class="eyebrow">YOUR COACH</div><p class="muted small">The coach feed is not enabled on this environment yet.</p></section>`:'';
  const list=insights.filter(i=>!i.dismissed_at).slice(0,full?8:3);
- const rows=list.map(i=>`<div class="insight ${esc(i.severity)} ${i.read_at?'':'unread'}"><div class="grow"><strong>${esc(i.title)}</strong><p>${esc(i.body)}</p></div><button class="btn small" data-dismiss-insight="${esc(i.id)}" aria-label="Dismiss insight">✕</button></div>`).join('');
+ const rows=list.map(insightRow).join('');
  const empty='<p class="muted small" style="margin-top:10px">Nothing flagged right now. As you log meals, workouts, water, check-ins and weight, I watch the trends and speak up when something drifts. Days with no logs count as unknown, never as zero.</p>';
  const rv=coachReview?`<div class="coach-review"><strong>${esc(coachReview.headline||'Weekly review')}</strong><p>${esc(coachReview.summary||'')}</p>${(coachReview.suggestions||[]).map(x=>`<p>• ${esc(x)}</p>`).join('')}${coachReview.should_refine&&getAIBasePlan()?'<p><button class="btn" id="refineFromReview">Draft a plan update from this</button></p>':''}</div>`:'';
- return `<section class="card coach" id="coach"><div class="ai-plan-head"><div><div class="eyebrow">YOUR COACH · WATCHING YOUR DATA LIVE</div><h2 style="margin:4px 0 0">What I noticed</h2></div>${full&&getAIBasePlan()?'<button class="btn primary" id="reviewWeek">Review my week</button>':''}</div>${rv}${rows||(rv?'':empty)}</section>`;
+ return `<section class="card coach" id="coach"><div class="ai-plan-head"><div><div class="eyebrow">YOUR COACH · WATCHING YOUR DATA LIVE</div><h2 style="margin:4px 0 0">What I noticed</h2></div>${full&&getAIBasePlan()?'<button class="btn primary" id="reviewWeek">Review my week</button>':''}</div>${rv}${rows||(rv?'':empty)}${full&&getAIBasePlan()?coachChatHtml():''}</section>`;
 }
 async function markInsightsRead(){
  const ids=insights.filter(i=>!i.read_at&&!i.dismissed_at).map(i=>i.id);if(!ids.length)return;
@@ -438,10 +439,79 @@ async function refineFromReview(btn){
  const text='WEEKLY REVIEW FROM THE COACH (based on real tracker data; missing days are unknown, not zero):\n'+[coachReview.headline,coachReview.summary,...(coachReview.suggestions||[])].filter(Boolean).join('\n');
  await runAIPlanRequest('refine',base.inputs||{},{instruction:text,current_plan_id:base.id},btn,'Drafting…','Draft a plan update from this');
 }
+
+/* ---- coach sync: the AI watches direct plan edits, judges them, and offers three options when it disagrees ---- */
+let coachChat=[],coachChatBusy=false,assessTimer=null,assessBusy=false;
+function insightRow(i){
+ const d=i.data||{};const concern=String(i.kind||'').startsWith('plan_edit')&&d.status==='concern'&&!i.dismissed_at;
+ const changes=concern&&(d.changes||[]).length?`<ul class="pe-changes">${d.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:'';
+ const concerns=concern&&(d.concerns||[]).length?`<ul class="pe-changes">${d.concerns.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:'';
+ const opts=concern?`<div class="pe-actions"><button class="btn primary small" data-pe-accept="${esc(i.id)}">1 · Accept AI refinement</button><button class="btn small" data-pe-keep="${esc(i.id)}">2 · Keep my version</button><button class="btn small" data-pe-discuss="${esc(i.id)}">3 · Discuss with AI</button></div><p class="muted small">1 drafts a refined plan for you to apply. 2 keeps your edit and I update myself to it. 3 opens a chat with me.</p>`:'';
+ return `<div class="insight ${esc(i.severity)} ${i.read_at?'':'unread'}"><div class="grow"><strong>${esc(i.title)}</strong><p>${esc(i.body)}</p>${changes}${concerns}${opts}</div><button class="btn small" data-dismiss-insight="${esc(i.id)}" aria-label="Dismiss insight">✕</button></div>`;
+}
+function coachChatHtml(){
+ const msgs=coachChat.map(m=>`<div class="chat-msg ${m.role}"><b>${m.role==='user'?'You':'Coach'}</b><p>${esc(m.content)}</p>${m.draft_id?`<p><button class="btn small primary" data-open-draft="${esc(m.draft_id)}">Review the draft plan</button></p>`:''}</div>`).join('');
+ return `<div class="coach-chat" id="coachChat"><div class="eyebrow" style="margin-top:14px">ASK YOUR COACH</div>${msgs}<form id="coachChatForm" class="chat-form"><input name="msg" placeholder="Ask about your plan, your week, or tell me what you want to change…" maxlength="1500" autocomplete="off" ${coachChatBusy?'disabled':''}/><button class="btn primary small" ${coachChatBusy?'disabled':''}>${coachChatBusy?'Thinking…':'Send'}</button></form></div>`;
+}
+function scheduleAssess(delay=20000){
+ if(!insightsEnabled||!aiUnlocked)return;
+ clearTimeout(assessTimer);assessTimer=setTimeout(runAssess,delay);
+ toast('Saved. Your coach will review this change in a few seconds.');
+}
+async function runAssess(){
+ if(assessBusy||!user||!aiUnlocked||!insightsEnabled)return;
+ assessBusy=true;
+ try{const d=await edgeCall({action:'assess'});
+  if(d.status==='ok'||d.status==='concern'){await loadInsights();refreshCoachDom()}
+ }catch(e){console.error('assess',e)}
+ finally{assessBusy=false}
+}
+async function ackState(){try{await supabase.rpc('agent_ack_state')}catch(e){console.error(e)}}
+async function keepMyVersion(id){
+ try{await q(supabase.rpc('agent_ack_state'));await dismissInsight(id);toast('Got it. I have updated myself to your version of the plan.')}catch(e){fail(e)}
+}
+async function acceptRefinement(id,btn){
+ const ins=insights.find(x=>x.id===id);const base=getAIBasePlan();if(!ins||!base)return;
+ await runAIPlanRequest('refine',base.inputs||{},{instruction:ins.data?.refine_instruction||ins.body,current_plan_id:base.id},btn,'Drafting…','1 · Accept AI refinement');
+ await dismissInsight(id);
+}
+async function discussEdit(id){
+ const ins=insights.find(x=>x.id===id);if(!ins)return;
+ const text='I edited my plan: '+((ins.data?.changes||[]).join('; ')||'see my live plan')+'. You raised: '+ins.body+' Can we talk it through?';
+ await sendChat(text);
+}
+async function sendChat(text){
+ if(coachChatBusy||!text.trim())return;
+ coachChat.push({role:'user',content:text.trim()});coachChatBusy=true;refreshCoachDom();
+ try{const d=await edgeCall({action:'chat',messages:coachChat.map(m=>({role:m.role,content:m.content}))});
+  coachChat.push({role:'assistant',content:d.reply||'…',draft_id:d.draft_id||null});
+  if(d.kept){await loadInsights()}
+ }catch(e){coachChat.push({role:'assistant',content:'I could not answer just now: '+(e.message||'try again')+'.'})}
+ finally{coachChatBusy=false;refreshCoachDom();$('#coachChat')?.scrollIntoView({block:'nearest'})}
+}
+async function openDraft(id){
+ try{aiPlanHistory=await q(supabase.from('ai_plan_versions').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(10));aiPlanDraft=aiPlanHistory.find(x=>x.id===id)||aiPlanDraft;await render()}catch(e){fail(e)}
+}
+async function saveTrainingWeek(e){
+ e.preventDefault();const raw=new FormData(e.currentTarget).get('week')||'';
+ const week=String(raw).split('\n').map(l=>l.trim()).filter(Boolean).slice(0,7).map(l=>{const [day,focus='',mins='0',ex='']=l.split('|').map(x=>x.trim());return {day:day.slice(0,30),focus:focus.slice(0,100),session_minutes:Math.min(180,Math.max(0,parseInt(mins,10)||0)),exercises:ex.split(',').map(x=>x.trim()).filter(Boolean).slice(0,10)}}).filter(d=>d.day);
+ try{await q(supabase.rpc('save_training_week',{p_week:week}));aiPlanHistory=await q(supabase.from('ai_plan_versions').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(10));await render();scheduleAssess()}catch(e){fail(e)}
+}
+function trainingWeekEditor(){
+ const w=(getAIBasePlan()?.status==='active'?getAIBasePlan():aiPlanHistory.find(x=>x.status==='active'))?.plan?.training_week||[];
+ if(!aiPlanHistory.some(x=>x.status==='active'))return '';
+ return `<div style="margin-bottom:14px">${card('Edit your training week',`<p class="muted small">One day per line: Day | Focus | minutes | exercise, exercise. Your coach reviews changes and tells you if it agrees.</p><form id="trainingWeekForm"><textarea name="week" rows="6" style="width:100%">${esc(w.map(d=>`${d.day} | ${d.focus} | ${d.session_minutes||0} | ${(d.exercises||[]).join(', ')}`).join('\n'))}</textarea><button class="btn primary small" style="margin-top:8px">Save training week</button></form>`)}</div>`;
+}
+
 function wireCoach(){
  $('#reviewWeek')?.addEventListener('click',e=>reviewWeek(e.currentTarget));
  $('#refineFromReview')?.addEventListener('click',e=>refineFromReview(e.currentTarget));
  document.querySelectorAll('[data-dismiss-insight]').forEach(b=>b.onclick=()=>dismissInsight(b.dataset.dismissInsight));
+ document.querySelectorAll('[data-pe-accept]').forEach(b=>b.onclick=()=>acceptRefinement(b.dataset.peAccept,b));
+ document.querySelectorAll('[data-pe-keep]').forEach(b=>b.onclick=()=>keepMyVersion(b.dataset.peKeep));
+ document.querySelectorAll('[data-pe-discuss]').forEach(b=>b.onclick=()=>discussEdit(b.dataset.peDiscuss));
+ document.querySelectorAll('[data-open-draft]').forEach(b=>b.onclick=()=>openDraft(b.dataset.openDraft));
+ $('#coachChatForm')?.addEventListener('submit',e=>{e.preventDefault();const i=e.currentTarget.querySelector('input');const t=i.value;i.value='';sendChat(t)});
 }
 
 /* ---- first-login tour (9 steps; works while sections are still locked) ---- */
@@ -483,9 +553,19 @@ window.addEventListener('resize',()=>{if(tourState?.open)renderTour()});
 
 function wireV2(){
  wireCoach();
+ $('#trainingWeekForm')?.addEventListener('submit',saveTrainingWeek);
  $('#tourBtn')?.addEventListener('click',startTour);
  $('#bell')?.addEventListener('click',async()=>{await markInsightsRead();if(tab!=='ai'){tab='ai';await render()}else refreshCoachDom();$('#coach')?.scrollIntoView({behavior:'smooth',block:'start'})});
  if(tourState&&!tourState.done&&!tourState.started){tourState.started=true;setTimeout(startTour,500)}
+}
+
+
+/* hooks: every direct plan edit (targets, meals, training) is reviewed by the coach after a short debounce */
+{
+ const hook=(orig,after)=>async function(...a){const r=await orig.apply(this,a);try{after()}catch(e){}return r};
+ saveSettings=hook(saveSettings,scheduleAssess);saveSettingsV2=hook(saveSettingsV2,scheduleAssess);
+ addMealTemplate=hook(addMealTemplate,scheduleAssess);editMealTemplate=hook(editMealTemplate,scheduleAssess);deleteMealTemplate=hook(deleteMealTemplate,scheduleAssess);
+ applyAIPlan=hook(applyAIPlan,ackState);
 }
 
 supabase.auth.onAuthStateChange((event,s)=>{session=s;if(event==='SIGNED_OUT'){user=null;unsubscribeInsights();aiUnlocked=false;insights=[];tourState=null;coachReview=null;if(reminderTimer)clearInterval(reminderTimer);renderAuthV2()}if(event==='PASSWORD_RECOVERY'){recoveryMode=true;renderPasswordRecovery()}});
@@ -526,7 +606,7 @@ function settingsPageV2(){
 function trainingV2(){
  const aiDays=aiActivePlan?.plan?.training_week||[];
  const aiBlock=aiDays.length?card('Active AI training plan',`<p class="muted small">Choose a session to load it into the workout form. Review exercises, sets, reps and loads before saving.</p>${aiDays.map((d,i)=>`<div class="listitem"><div class="grow"><strong>${esc(d.day)} · ${esc(d.focus)}</strong><small>${Number(d.session_minutes)||0} min · ${(d.exercises||[]).map(esc).join(' · ')}</small></div><button class="btn sm" data-ai-workout="${i}">Load session</button></div>`).join('')}`):'';
- return `${pageHead('STRENGTH · CARDIO · PERFORMANCE','Training','Log sessions and edit exercise-level sets, reps and loads.')}${aiBlock?'<div style="margin-bottom:14px">'+aiBlock+'</div>':''}
+ return `${pageHead('STRENGTH · CARDIO · PERFORMANCE','Training','Log sessions and edit exercise-level sets, reps and loads.')}${aiBlock?'<div style="margin-bottom:14px">'+aiBlock+'</div>':''}${trainingWeekEditor()}
  <div class="grid g2">${card('Log a workout',`<form id="workoutForm" class="formgrid">
  <div class="field"><label>SESSION NAME</label><input name="title" required placeholder="Upper body A"/></div>
  <div class="field"><label>WORKOUT TYPE</label><select name="workout_type"><option value="strength">Strength</option><option value="cardio">Cardio</option><option value="mobility">Mobility</option><option value="sports">Sports</option><option value="other">Other</option></select></div>
