@@ -30,3 +30,16 @@ Set these Supabase Edge Function secrets: `LLM_BASE_URL=https://bedrock-runtime.
 2. Edge function `the-cut-ai` deployed (verify_jwt on) and `generate` + `review` return 200.
 3. Preview: first login lands on AI Planner with other tabs locked; generating a plan unlocks them; Apply creates an active plan and a "Plan applied" insight; Review my week works; the tour runs 9 steps.
 4. Merge `feat/2.0` into `main` (Vercel auto-deploys production), then smoke test production.
+
+## Incident response & rollback (Vercel production checklist)
+- **Detect**: Vercel -> Project -> Logs / Runtime Errors; Supabase -> Logs (edge function `the-cut-ai`, auth, postgres).
+- **Roll back the frontend (instant, no rebuild)**: Vercel -> Deployments -> last good production deployment -> "Promote to Production" (or `request_rollback`). Re-test with a stage/preview URL first when time allows.
+- **Roll back the edge function**: redeploy the previous version of `supabase/functions/the-cut-ai` from git history (the function is shared by preview and production).
+- **Roll back DB changes**: migrations are additive; revert with a new migration, never by editing history.
+- **Triage order**: 1) is the site up (200 on `/`)? 2) auth failing (Supabase status/Auth logs)? 3) AI failing (edge function logs, Bedrock quota/budget)? 4) comms: note the incident and fix in the repo's PR.
+- **Security headers/CSP** live in `src/vercel.json`. If a feature breaks with a CSP error in the browser console, add the origin to the matching directive, test on a preview, then merge.
+- **Stage before promote**: every branch gets a preview URL; merge to `main` only after smoke tests pass there.
+
+## Production checklist status
+- Paid/Enterprise-only items intentionally skipped: SAML SSO, SCIM, Audit Logs, cookie policy, Observability Plus, Function/Secure Compute failover, load testing, Spend Management thresholds.
+- Manual dashboard items: Firewall (rate limit + bot filter + OWASP managed rules), Speed Insights, Supabase leaked-password protection, Deployment Protection for previews.
