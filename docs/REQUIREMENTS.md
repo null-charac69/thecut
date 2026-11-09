@@ -53,7 +53,7 @@ THE CUT is a single-user-per-account web app. A new user signs up, verifies thei
 
 | Tab | Id | Purpose |
 |---|---|---|
-| Plan | `ai` | AI planner: intake, generate, refine, review, apply, plan history |
+| Plan | `ai` | AI planner: intake and refine only; output lands in Meals, Workout, Prep; plan history in Account |
 | Meals | `meals` | Today's meals from the active plan, extras, plan-vs-actual |
 | Workout | `workout` | Live workout logger, session history, weekly training plan editor |
 | Weight | `weight` | Weigh-ins, trend, history |
@@ -139,7 +139,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | PLAN-07 | "Generate my AI plan" creates a plan containing: title, summary, rationale, assumptions, safety notes, estimated daily cost (₹), targets (kcal, protein, carbs, fat, fibre, water), 2–6 meals with items and macros, grocery list, prep tasks, training week | P0 | Done | EF `the-cut-ai` action `generate`; FE `generateAIPlan` |
 | PLAN-08 | Generated plans are validated and normalised server-side: calorie floor 1,200 kcal, ceiling 6,000 kcal, macro/calorie consistency, minimum protein (1.2 g/kg fat loss, 0.8 g/kg otherwise) | P0 | Done | EF `plan.ts` `normalizePlan`, `qualityChecks` |
 | PLAN-09 | A plan that fails quality checks gets one corrective retry; if it still fails the user sees a safety-check error and nothing is saved | P1 | Done | EF `runPlan`; returns 422 |
-| PLAN-10 | AI output is saved as a **draft** version and never changes the tracker until applied | P0 | Done | FE `saveAIDraft`; DB `ai_plan_versions.status` |
+| PLAN-10 | AI output is saved as a version, then **applied automatically**; Undo toast and "Undo last change" restore the previous plan; coach-proposed drafts still wait for Apply | P0 | Done | FE `saveAIDraft`; DB `ai_plan_versions.status` |
 | PLAN-11 | Plan review shows targets, reasoning, safety notes, meals, groceries, prep, training week | P1 | Done | FE `aiPlanCard` |
 | PLAN-12 | "Apply this plan to my workspace" asks for confirmation, then atomically activates the plan (targets, meal templates, groceries, prep tasks, training week) | P0 | Done | FE `applyAIPlan` + `uiConfirm`; DB RPC `apply_ai_plan_version` |
 | PLAN-13 | Profile stays editable; submitting edits analyses the change against the previous plan and creates a reviewable draft | P1 | Done | FE `describeAIProfileChanges`, `buildAIEditInstruction`, `updateAIEditPreview`, action `refine` |
@@ -395,7 +395,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 ### US-04 First plan unlocks the app (PLAN-01…12)
 - **Given** I have no plan, **then** every tab except Plan shows a lock and redirects to Plan.
-- **Given** I complete the intake and confirm I am 18+, **when** I choose Generate, **then** a draft plan appears for review and my tracker is unchanged.
+- **Given** I complete the intake and confirm I am 18+, **when** I choose Generate, **then** the plan is applied and I land on Meals with an Undo option.
 - **Given** a draft, **when** I choose "Apply this plan to my workspace" and confirm, **then** my targets, meals, groceries, prep tasks and training week are set, and the other tabs unlock.
 - **Given** the AI returns a plan below 1,200 kcal/day, **then** it is rejected or corrected and never shown as valid.
 
