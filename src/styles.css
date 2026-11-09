@@ -242,3 +242,24 @@ details.fold{padding:0}details.fold>summary{list-style:none;display:flex;justify
 
 @media (max-width:860px){.topbar.nodate{justify-content:space-between}.topbar.nodate .crumb{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0;font-size:0;gap:0;white-space:nowrap}.topbar.nodate .crumb::before{content:"✓";flex:0 0 30px;height:30px;border-radius:10px;background:var(--lime);color:#132017;font-size:17px;font-weight:900;display:grid;place-items:center;transform:rotate(-8deg)}.topbar.nodate .crumb b{margin-left:0;font-size:17px;letter-spacing:.2px;color:var(--text);text-transform:none;font-weight:750}.topbar.nodate .top-actions{width:auto;flex:0 0 auto}}
 .plan-now{margin-bottom:12px}.plan-now h2{margin:4px 0 4px!important}.plan-now p{margin:0 0 12px}.toast .btn{margin-left:8px;min-height:32px;padding:4px 12px;background:#172418;color:#e1f5bd;border-color:#172418}
+/* ===== AI progress, plan-change card, bell menu ===== */
+#aiRefineForm .btn,#aiIntakeForm .btn.primary{margin-top:14px}
+.btn.busy{position:relative;overflow:hidden}.btn.busy::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,#ffffff55 50%,transparent 80%);transform:translateX(-100%);animation:shim 1.3s infinite}
+@keyframes shim{to{transform:translateX(100%)}}
+#aiProg{position:fixed;z-index:90;left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;min-width:240px;max-width:calc(100vw - 24px);padding:13px 18px 16px;border-radius:16px;background:#1d2d22;border:1px solid #49613e;box-shadow:0 12px 40px #0008;color:var(--text);font-weight:650;font-size:13px;overflow:hidden}
+#aiProg .aiprog-orb{flex:0 0 14px;height:14px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 0 #c8f16977;animation:orb 1.6s ease-out infinite}
+@keyframes orb{70%{box-shadow:0 0 0 12px #c8f16900}100%{box-shadow:0 0 0 0 #c8f16900}}
+#aiProg .aiprog-bar{position:absolute;left:0;bottom:0;height:3px;width:40%;background:linear-gradient(90deg,transparent,var(--lime),transparent);animation:slide 1.4s ease-in-out infinite}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+@media (max-width:860px){#aiProg{bottom:calc(84px + env(safe-area-inset-bottom))}}
+.plan-change{margin-bottom:14px;border-color:#49613e;background:linear-gradient(120deg,#223628,#18241e)}
+.plan-change h2{margin:6px 0 6px}.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.chg{list-style:none;margin:10px 0 14px;padding:0;display:grid;gap:8px}.chg li{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;border-radius:11px;background:#ffffff0a;font-size:13px}.chg li b{font-weight:650}.chg li span{color:var(--lime);text-align:right;min-width:0;overflow-wrap:anywhere}
+#bell{position:relative}#bell svg{display:block}#bell .badge{position:absolute;top:-4px;right:-4px;margin:0;min-width:18px;height:18px;line-height:18px;padding:0 4px;text-align:center}
+#bellMenu{position:fixed;z-index:150;width:min(340px,calc(100vw - 16px));max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;animation:pop .14s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.98)}}
+#bellMenu .bm-head{display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}#bellMenu .bm-head small{color:var(--muted)}
+#bellMenu .bm-item{display:flex;gap:10px;align-items:flex-start;text-align:left;background:none;border:0;color:var(--text);padding:11px 12px;border-radius:11px;min-height:48px}#bellMenu .bm-item:hover{background:var(--panel2)}
+#bellMenu .dot2{flex:0 0 8px;height:8px;border-radius:50%;margin-top:6px;background:transparent}#bellMenu .unread .dot2{background:var(--lime)}
+#bellMenu .bm-item span{min-width:0}#bellMenu strong{display:block;font-size:13px}#bellMenu em{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}
+#bellMenu .bm-empty{padding:18px 12px;color:var(--muted);font-size:13px}#bellMenu .bm-foot{margin-top:4px;background:var(--lime);color:#172318;border:0;border-radius:11px;padding:12px;font-weight:700;min-height:44px}
