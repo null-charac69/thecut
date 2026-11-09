@@ -1,7 +1,7 @@
 # Architecture
 
 ```
-Browser (src/index.html)
+Browser (src/index.html + app.js + lib/*.js + styles.css)
   |-- Supabase Auth / PostgREST (RLS: users only see own rows)
   |-- Supabase Realtime  <- agent_insights changes
   '-- POST /functions/v1/the-cut-ai  (JWT required)

@@ -4,9 +4,9 @@
 |---|---|
 | **Product** | THE CUT 2.0 — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Date** | 2026-11-10 |
-| **Baseline** | `main` @ `81677d8` (production: https://the-cut-tracker.vercel.app) |
+| **Baseline** | `main` after merge of `chore/typecheck-docs` (previous baseline `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
 | **Status** | Living document. Update the status column in the same pull request that changes behaviour. |
 
@@ -71,7 +71,7 @@ Legacy tab names (`overview`, `nutrition`, `habits`, `training`, `progress`, `pl
 
 | Layer | Technology |
 |---|---|
-| Frontend | One static file, `src/index.html` (ES module, top-level `await`); no build step; `@supabase/supabase-js` loaded from `esm.sh` |
+| Frontend | Static ES modules, no build step: `src/index.html` (shell), `src/app.js` (app, top-level `await`), `src/styles.css`, `src/lib/{format,workout,errors}.js` (pure helpers); `@supabase/supabase-js` loaded from `esm.sh` |
 | Hosting | Vercel project `the-cut-tracker`, Root Directory `src`; `main` auto-deploys production; branches get preview deployments |
 | Backend | Supabase project `the-cut-cloud` (`ukyobppectpjkcudgewy`, ap-south-1): Postgres + RLS, Auth, Realtime, Storage, Edge Functions (Deno), `pg_cron` |
 | AI | Edge function `the-cut-ai` → provider-agnostic OpenAI-compatible adapter (`llm.ts`); current provider AWS Bedrock with SigV4 signing; model `DeepSeek V3.2` (configured by secrets `LLM_BASE_URL`, `LLM_MODEL`, `LLM_MODEL_FAST`, `LLM_AWS_*`) |
@@ -81,7 +81,8 @@ Legacy tab names (`overview`, `nutrition`, `habits`, `training`, `progress`, `pl
 
 | Component | Version / state | Auth | Source in repo |
 |---|---|---|---|
-| Web app (`src/index.html`, `sw.js`, favicons) | production on `main` | — | yes |
+| Web app (`index.html`, `app.js`, `styles.css`, `lib/`, `manifest.webmanifest`, `icons/`, `sw.js`, favicons) | production on `main` | — | yes |
+| Throwaway test users `rls-test-a@thecut.invalid`, `rls-test-b@thecut.invalid` | exist in production Auth (used by API/e2e tests) | password sign-in | no (database only) |
 | `src/vercel.json` (security headers, CSP, cache rules) | production | — | yes |
 | Edge function `the-cut-ai` | v52, ACTIVE | `verify_jwt` true | yes |
 | Edge function `delete-account` | v1, ACTIVE | `verify_jwt` true (service role inside) | yes |
@@ -273,7 +274,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | UX-09 | Auth message region is announced to screen readers (`role=status`, `aria-live=polite`) | P2 | Done | FE auth form |
 | UX-10 | Mobile: 16 px inputs (no iOS zoom), 44 px tap targets, bottom tab bar with lock icons | P2 | Done | FE CSS; `.mobilebar` |
 | UX-11 | Reduced-motion preference is respected | P2 | Done | FE CSS |
-| UX-12 | First-login app tour with a "? Tour" replay button | P2 | Partial | FE `TOUR_STEPS`, `startTour`; step copy still names retired tabs (Overview, Analytics, Settings) (KL-04) |
+| UX-12 | First-login app tour with a "? Tour" replay button | P2 | Removed | Button hidden by CSS (`#tourBtn{display:none}`), auto-start disabled at bootstrap; code remains dormant, copy names retired tabs (RM-06, KL-04) |
 | UX-13 | Loading states for pages and buttons ("Loading…", "Saving…", "Thinking…") | P2 | Done | FE `render`, `wkSaveBtn`, `coachChatBusy` |
 | UX-14 | Empty states on every list (no weigh-ins, no groceries, no sessions, etc.) | P2 | Done | FE `.empty` blocks |
 | UX-15 | Edit flows for meal templates, extras, catalog foods and saved sessions use native `prompt()` boxes | P2 | Partial | FE `addMealTemplate`, `editMealTemplate`, `editFood`, `editCatalogFood`, `editWorkout(V2)`, `editMeasurement(V2)` (OI-05) |
@@ -286,8 +287,29 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | PUSH-02 | A scheduled job runs every minute and dispatches due reminders to subscribed devices | P2 | Done | `pg_cron` job; EF `the-cut-push-dispatch` v41 (secret-header guarded) |
 | PUSH-03 | Reminders (title, type water/meal/other, time, repeat daily/weekdays/weekend) and push subscriptions are stored per user with RLS | P2 | Done | DB `reminders`, `push_subscriptions`, `push_notification_deliveries` |
 | PUSH-04 | In-app creation, toggle and deletion of reminders; enabling/disabling push on this device | P2 | Partial | FE `saveReminder`, `toggleReminder`, `deleteReminder`, `enablePushNotifications`, `disablePushNotifications`; the form lives on the legacy settings page, not reachable (KL-03) |
-| PUSH-05 | In-page reminder check every 30 s when notification permission is granted | P2 | Done | FE `startReminderLoop`, `checkDueReminders` |
+| PUSH-05 | In-page reminder check every 30 s when notification permission is granted | P2 | Partial | FE `startReminderLoop`/`checkDueReminders` exist but nothing calls `startReminderLoop`; server-side push (PUSH-02) is the working path (OI-13) |
 | PUSH-06 | Push is cleared for the device on sign-out | P2 | Done | FE `clearPushForCurrentUser` |
+
+### 4.12 Installable app / PWA (PWA)
+
+| ID | Requirement | Pri | Status | Evidence |
+|---|---|---|---|---|
+| PWA-01 | Web app manifest (name, short name, standalone display, portrait, theme/background colours, start URL, scope, categories) | P2 | Done | `src/manifest.webmanifest`; linked from `index.html` |
+| PWA-02 | Icons 192 and 512 (any) and 512 maskable, generated from the favicon | P2 | Done | `src/icons/` |
+| PWA-03 | Install-meta tags for mobile (`mobile-web-app-capable`, Apple title) and cache headers for manifest and icons | P2 | Done | `src/index.html`, `src/vercel.json` |
+| PWA-04 | Installable from Chrome on Android ("Install app") | P2 | Partial | Served and valid on production; not yet tried on a physical device (OI-15) |
+| PWA-05 | Google Play listing / signed APK or AAB | P2 | Skipped | Needs the $25 Play developer account; an APK could not be built in the workspace (section 11) |
+
+### 4.13 Quality assurance (QA)
+
+| ID | Requirement | Pri | Status | Evidence |
+|---|---|---|---|---|
+| QA-01 | Unit tests for pure logic and plan validation (25 tests, all passing) | P1 | Done | `tests/unit/*.test.mjs`; `npm run test:unit` |
+| QA-02 | API/RLS tests: cross-user read/update/delete/insert/reassign blocked, anon sees nothing, plan RPC and storage isolated, edge functions reject bad calls (63 tests) | P1 | Partial | `tests/api/`; expected results confirmed manually against production; the suite itself could not be run from the workspace (no network) (OI-13) |
+| QA-03 | Browser smoke tests (assets, headers, sign-in error dialog, plan gate, Account page, delete-dialog guard, sign-out) | P1 | Partial | `tests/e2e/`; Chrome launch and asset test pass locally, flows verified manually in a browser (OI-13) |
+| QA-04 | CI workflow runs lint, typecheck, unit, API and e2e | P1 | Partial | `.github/workflows/ci.yml` committed; Actions runs not observed, secrets not yet added (OI-13) |
+| QA-05 | Lint (`no-undef`, redeclare, unreachable) over `src/` and strict JSDoc typecheck over `src/lib/` | P2 | Done | `eslint.config.mjs`, `jsconfig.json`; `npm run check` |
+| QA-06 | Testing guide and throwaway-user procedure | P2 | Done | `docs/TESTING.md` |
 
 ---
 
@@ -302,7 +324,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | SEC-03 | Frontend holds only the publishable Supabase key; service-role key exists only inside edge functions | P0 | Done | Vercel env; EF `delete-account` |
 | SEC-04 | AI and delete-account endpoints require a valid JWT | P0 | Done | `verify_jwt` true on both |
 | SEC-05 | Security response headers: `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS, `X-Frame-Options: DENY`, `Cross-Origin-Opener-Policy` | P1 | Done | `src/vercel.json` |
-| SEC-06 | Content-Security-Policy: `default-src 'self'`; scripts from self, inline and `https://esm.sh`; connections to self, Supabase (https/wss) and esm.sh; images from self, data, blob, Supabase; `frame-ancestors 'none'` | P1 | Done | `src/vercel.json` |
+| SEC-06 | Content-Security-Policy: `default-src 'self'`; scripts from self and `https://esm.sh` only (no inline scripts); styles allow inline (92 inline `style=` attributes); connections to self, Supabase (https/wss) and esm.sh; images from self, data, blob, Supabase; `frame-ancestors 'none'` | P1 | Done | `src/vercel.json` |
 | SEC-07 | Admin and SECURITY DEFINER RPCs do not let one user act on another (17 public functions, 15 of them SECURITY DEFINER) | P1 | Partial | Reviewed during build; formal audit of the user-callable SECURITY DEFINER RPCs still open (OI-07) |
 | SEC-08 | HTML escaping of all user- and AI-supplied text rendered into the page | P0 | Done | FE `esc()` used in templates |
 | SEC-09 | Secrets are never committed (AI keys in Supabase secrets; Vercel env for public keys) | P0 | Done | README; RUNBOOK |
@@ -457,6 +479,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | `docs/ARCHITECTURE.md` | Architecture diagram, principles, provider swap, gating |
 | `docs/AGENT.md` | Coach rules and coach sync |
 | `docs/RUNBOOK.md` | Deployment, release checklist, rollback, incident response, production-checklist status |
+| `docs/TESTING.md` | Test layers, throwaway users, how to run, CI |
 | `docs/REQUIREMENTS.md` | This document |
 
 ---
@@ -471,6 +494,12 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | Production hardening | Security headers and CSP in `vercel.json`; runbook additions |
 | UX feedback layer | Modal errors, styled confirmations, offline banner, session-expired dialog, accessibility and mobile fixes |
 | Account release (`81677d8`) | Avatar menu, Account page, change email/password, data export, delete account (`delete-account` v1) |
+| Requirements register | `docs/REQUIREMENTS.md` v1.0 |
+| PWA (`5af461b`) | Manifest, icons, install meta, cache headers |
+| Cleanup (`96c9e94`) | 7 superseded duplicate functions removed; 11 style blocks merged into one |
+| Asset split (`1c6915f`) | `styles.css`, `app.js`, `lib/` modules; inline scripts removed; CSP `script-src` without `'unsafe-inline'` |
+| Test suite (`2a32896`) | Unit, API/RLS, e2e smoke, CI workflow |
+| Typecheck and docs | ESLint, strict JSDoc typecheck for `lib/`, README/RUNBOOK drift fixed |
 
 ---
 
@@ -486,10 +515,15 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | OI-06 | Vercel firewall rules and Speed Insights | Vercel dashboard (API returned 404) | P2 |
 | OI-07 | Audit the user-callable SECURITY DEFINER RPCs (`save_training_week`, `agent_ack_state`, `agent_scan_me`, `agent_week_summary`, `agent_plan_state` and similar) to confirm each acts only on `auth.uid()` | Review | P1 |
 | OI-08 | Add `the-cut-push-dispatch` source to `supabase/functions/` | Code change | P2 |
-| OI-09 | README says the model is `gpt-oss-120b`; deployed model is DeepSeek V3.2. RUNBOOK still mentions Groq key rotation and a `feat/2.0` branch | Doc fix | P2 |
+| OI-09 | ~~README/RUNBOOK drift~~ Fixed in v1.1 | Closed | P2 |
 | OI-10 | Weight-row delete confirmation not exercised in a signed-in browser test | Test | P2 |
-| OI-11 | Update tour copy and targets to the six current tabs | Code change | P2 |
+| OI-11 | Decide: restore the app tour (rewrite copy for the six tabs, unhide button) or delete the dormant tour code | Product decision | P2 |
 | OI-12 | Reachable UI for features that exist only as backend or legacy code (water, check-ins, activity, food catalog, progress photos, body fat, reminders/push enable) — decide to restore or remove | Product decision | P1 |
+| OI-13 | Enable GitHub Actions, add secrets `TEST_A_*`, `TEST_B_*`, `E2E_*`, and confirm the first CI run is green; wire `startReminderLoop` or delete it (PUSH-05) | Repo settings / code | P1 |
+| OI-14 | Delete throwaway Auth users `rls-test-a`, `rls-test-b` if the API/e2e tests are retired (`rls-test` rows are removed by the tests themselves) | Supabase dashboard | P2 |
+| OI-15 | Try Install app on a physical Android phone | Manual test | P2 |
+| OI-16 | `app.js` is still one 160 KB module with shared mutable state; splitting page modules needs a shared `state` object first | Code change | P2 |
+| OI-17 | Remove inline `style=` attributes (92) so CSP `style-src` can drop `'unsafe-inline'` | Code change | P2 |
 
 ## 11. Skipped items (paid plan or manual action)
 
@@ -499,6 +533,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | SK-02 | Vercel firewall / rate-limit rules (SEC-10) | Dashboard-only; API unavailable |
 | SK-03 | Vercel Speed Insights (PERF-04) | Dashboard toggle |
 | SK-04 | Supabase server-side password length change | Settings change requires the owner to save it (OI-02) |
+| SK-05 | Google Play listing / APK (PWA-05) | $25 Play account not purchased; workspace cannot download the Android SDK. Chrome install (PWA-04) is the free route |
 
 ## 12. Removed features
 
@@ -508,6 +543,8 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | RM-02 | Header sign-out button | Replaced by the avatar menu (ACCT-01) |
 | RM-03 | Inline footnote auth messages as the only error channel | Replaced by modal dialogs (AUTH-05) |
 | RM-04 | Browser `confirm()` boxes for destructive actions on reachable screens | Replaced by `uiConfirm` (UX-03) |
+| RM-05 | Seven superseded duplicate functions (`addGrocery`, `deletePhoto`, `editMeasurement`, `editWorkout`, `saveWorkout`, `renderAuth`, `settingsPage`) | Replaced by their V2/V3 versions; no feature lost |
+| RM-06 | App tour (button hidden, auto-start off) | Code kept dormant (OI-11) |
 
 ## 13. Known limitations
 
@@ -516,10 +553,11 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | KL-01 | Time zone is fixed to `Asia/Kolkata` for "today", dates and reminders. |
 | KL-02 | The tab lock (`aiUnlocked`) is a client-side convenience; data protection relies on RLS. |
 | KL-03 | Code for water, check-ins, activity, food catalog, meal-template edit/delete, progress photos, body fat, reminders and push enable remains, but their screens are not in the navigation, so users cannot reach them. |
-| KL-04 | The "? Tour" copy still describes retired tabs. |
+| KL-04 | The dormant tour copy describes retired tabs (see RM-06). |
 | KL-05 | The in-progress workout draft lives in browser storage, so it does not follow the user to another device. |
 | KL-06 | Edit flows for some items use native browser prompts (OI-05). |
 | KL-07 | The CSP blocks self-framing, so the app cannot be embedded for mobile-width testing. |
+| KL-10 | `app.js` still uses monkey-patched function overrides (e.g. `saveSettings=saveSettingsV2`); the strict typecheck therefore covers only `src/lib/`. |
 | KL-08 | Nutrition and training output are AI estimates, not medical advice. |
 | KL-09 | The coach rules depend on data (water, check-ins) that has no reachable logging screen (KL-03), so those rules fire only on existing or imported data. |
 
@@ -530,3 +568,4 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-11-10 | Initial requirements register built from `main` @ `81677d8` |
+| 1.1 | 2026-11-10 | Added PWA and QA modules; asset split and CSP change; corrected PUSH-05 and UX-12; closed OI-09; new open items OI-13 to OI-17 |
