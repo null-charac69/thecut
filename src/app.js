@@ -1,7 +1,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 import { esc, today, shift, dateFmt, weekStart, fmt } from './lib/format.js';
-import { e1rm, volOf, parsePlanExercise, parseWorkoutExerciseLine } from './lib/workout.js';
+import { e1rm, volOf, parsePlanExercise, parseWorkoutExerciseLine, planTargetKg, diffWeek } from './lib/workout.js';
 import { friendlyError } from './lib/errors.js';
 import { diffPlans } from './lib/plandiff.js';
 const THE_CUT_VAPID_PUBLIC_KEY='BME6_NCsj1r-_-635ZRD1acvw0SVS6dXSTDLR3ujxY6rlH6l0kuqW6qTFtjUOdEtoAc';
@@ -22,6 +22,24 @@ const PREP=['Boil eggs for the next few days · 5 whole + 2 whites/day','Marinat
 let user=null,session=null,settings={calorie_target:1566,protein_target_g:139,carbs_target_g:105.3,fat_target_g:64.4,water_target_ml:2500},date=today(),tab='overview',day={meals:[],entries:[],checkin:null,activity:null,water:[],prep:[]},templates=[],foods=[],groceries=[],workouts=[],measurements=[],photos=[],toastTimer;
 let templateHistory=[],aiPlanHistory=[],aiPlanDraft=null,aiActivePlan=null,aiBusy=false;
 let lastPlanChange=null,aiProgTimer=null;
+/* Refine-plan box state: survives in-app tab switches (memory) and page reloads (localStorage). */
+let rf={text:'',pending:null},rfUid=null,rfInterrupted=false;
+const RF_KEY=()=>'cut_refine_'+(user?.id||'x');
+function rfSave(){try{rf.text||rf.pending?localStorage.setItem(RF_KEY(),JSON.stringify(rf)):localStorage.removeItem(RF_KEY())}catch{}}
+function rfEnsure(){
+ if(!user||rfUid===user.id)return;rfUid=user.id;
+ try{const d=JSON.parse(localStorage.getItem(RF_KEY())||'null');if(d&&typeof d==='object')rf={text:String(d.text||'').slice(0,4000),pending:d.pending||null}}catch{}
+ // A pending marker found on a fresh page load means the request died with the old page.
+ if(rf.pending&&!aiBusy){rfInterrupted=true;rf.pending=null;rfSave()}
+}
+function rfBusy(){return !!rf.pending&&aiBusy}
+function rfPaint(){
+ const f=$('#aiRefineForm');if(!f)return;
+ const b=f.querySelector('button[type=submit]'),t=f.querySelector('textarea'),busy=rfBusy();
+ b.disabled=busy;b.classList.toggle('busy',busy);b.textContent=busy?'Thinking…':'Refine & apply';t.readOnly=busy;
+ if(!busy&&t.value!==rf.text)t.value=rf.text;
+ f.querySelector('.rf-note')?.classList.toggle('hidden',!rfInterrupted);
+}
 let aiUnlocked=false,insights=[],insightsEnabled=true,insightChannel=null,tourState=null,coachReview=null;
 let _modalOpener=null,_manualSignOut=false;
 async function q(p){let {data,error}=await p;if(error)throw error;return data}
@@ -106,7 +124,7 @@ function aiPlannerPage(){
  <div class="field ai-wide"><label>PREFERRED CUISINES</label><input name="preferred_cuisines" value="${v('preferred_cuisines')}" placeholder="Indian home food, North Indian..."/></div><div class="field ai-wide"><label>OTHER CONSTRAINTS</label><textarea name="additional_notes" rows="3" placeholder="Work shifts, meal timing, equipment, disliked foods...">${v('additional_notes')}</textarea></div>
  <label class="row ai-wide" style="font-size:12px;color:var(--muted)"><input type="checkbox" name="adult_confirmed" required ${p.adult_confirmed?'checked':''}/> I am 18 or older and understand this is general wellness information, not medical advice.</label>
  <div class="ai-wide"><button class="btn primary" id="aiProfileAction" type="submit">${r?'Analyze edits & refine plan':'Generate my AI plan'}</button> ${r?'<button class="btn" type="button" data-ai-generate-new>Generate a fresh plan</button>':''} <span class="ai-muted">Your profile stays editable. When you submit changes, the AI compares them with the previous plan, explains the implications and creates a reviewable draft.</span></div><div class="ai-wide ai-muted" id="aiEditPreview" aria-live="polite"></div></form>`)}
- ${r?card('Refine plan',`<form id="aiRefineForm"><div class="field"><textarea name="instruction" rows="2" required aria-label="What should change?" placeholder="e.g. swap paneer for tofu, shorter prep"></textarea></div><button class="btn primary" type="submit">Refine &amp; apply</button></form>`):''}</div></div>`;
+ ${r?(rfEnsure(),card('Refine plan',`<form id="aiRefineForm"><div class="notice warn rf-note ${rfInterrupted?'':'hidden'}" role="status" style="margin-bottom:10px">Your last refine didn’t finish because the page was closed or reloaded. Your text is back below. Tap Refine &amp; apply to send it again.</div><div class="field"><textarea name="instruction" rows="2" required aria-label="What should change?" placeholder="e.g. swap paneer for tofu, shorter prep" ${rfBusy()?'readonly':''}>${esc(rf.text)}</textarea></div><button class="btn primary${rfBusy()?' busy':''}" type="submit" ${rfBusy()?'disabled':''}>${rfBusy()?'Thinking…':'Refine &amp; apply'}</button></form>`)):''}</div></div>`;
 }
 async function callAIPlanner(action,profile,extra={}){
  const {data:{session:s}}=await supabase.auth.getSession();if(!s?.access_token)throw new Error('Session expired. Sign in again.');
@@ -151,7 +169,7 @@ function updateAIEditPreview(){
 function setAIProgress(action){
  clearInterval(aiProgTimer);aiProgTimer=null;let el=document.getElementById('aiProg');
  if(!action){el?.remove();return}
- const msgs=action==='refine'?['Reading your plan…','Rebalancing macros…','Swapping foods…','Rebuilding your grocery list…','Almost there…']:['Calculating your targets…','Designing your meals…','Building your training week…','Almost there…'];
+ const msgs=action==='workout'?['Reading your sets…','Comparing with your history…','Weighing your feedback…','Adjusting your training week…','Almost there…']:action==='refine'?['Reading your plan…','Rebalancing macros…','Swapping foods…','Rebuilding your grocery list…','Almost there…']:['Calculating your targets…','Designing your meals…','Building your training week…','Almost there…'];
  if(!el){el=document.createElement('div');el.id='aiProg';el.setAttribute('role','status');el.innerHTML='<span class="aiprog-orb" aria-hidden="true"></span><span class="aiprog-txt"></span><i class="aiprog-bar" aria-hidden="true"></i>';document.body.appendChild(el)}
  let i=0;const t=el.querySelector('.aiprog-txt');t.textContent=msgs[0];
  aiProgTimer=setInterval(()=>{i=Math.min(i+1,msgs.length-1);t.textContent=msgs[i]},3500);
@@ -176,11 +194,13 @@ async function openBellMenu(){
  setTimeout(()=>{document.addEventListener('click',_bellOutside,true);document.addEventListener('keydown',_bellEsc,true)},0);
  await markInsightsRead();const bb=$('#bell');if(bb)bb.innerHTML=bellHTML();
 }
-async function runAIPlanRequest(action,profile,extra,button,workingLabel,idleLabel){
- if(aiBusy)return;
- try{aiBusy=true;setAIProgress(action==='refine'?'refine':'generate');if(button){button.disabled=true;button.classList.add('busy');button.textContent=workingLabel;}const result=await callAIPlanner(action,profile,extra);await saveAIDraft(result,profile);}
+async function runAIPlanRequest(action,profile,extra,button,workingLabel,idleLabel,onResult){
+ if(aiBusy)return false;
+ let ok=false;
+ try{aiBusy=true;setAIProgress(action==='refine'?'refine':'generate');if(button){button.disabled=true;button.classList.add('busy');button.textContent=workingLabel;}const result=await callAIPlanner(action,profile,extra);if(onResult)onResult();await saveAIDraft(result,profile);ok=true}
  catch(e){fail(e)}
- finally{aiBusy=false;setAIProgress(null);if(button&&button.isConnected){button.disabled=false;button.classList.remove('busy');button.textContent=idleLabel;}}
+ finally{aiBusy=false;setAIProgress(null);if(button&&button.isConnected){button.disabled=false;button.classList.remove('busy');button.textContent=idleLabel;}rfPaint()}
+ return ok;
 }
 async function generateAIPlan(e){
  e.preventDefault();if(aiBusy)return;const form=e.currentTarget,button=form.querySelector('#aiProfileAction');
@@ -204,7 +224,9 @@ async function refineAIPlan(e){
  try{
   const profile=collectAIProfile($('#aiIntakeForm')),changes=describeAIProfileChanges(base.inputs||{},profile);
   const instruction=buildAIEditInstruction(base,profile,changes,message);
-  await runAIPlanRequest('refine',profile,{instruction,current_plan_id:base.id},button,'Thinking…','Send to AI coach');
+  rf.text=message;rf.pending={at:Date.now(),planId:base.id};rfInterrupted=false;rfSave();
+  try{await runAIPlanRequest('refine',profile,{instruction,current_plan_id:base.id},button,'Thinking…','Refine & apply',()=>{rf.text='';rf.pending=null;rfSave()})}
+  finally{if(rf.pending){rf.pending=null;rfSave()}rfPaint()}
  }catch(e){fail(e)}
 }
 async function applyAIPlan(id,opts={}){
@@ -246,10 +268,10 @@ let nvals=Object.values(nutritionByDay),svals=Object.values(stepsByDay);
 analyticsData={meals:m.filter(x=>x.status==='completed').length,workouts:w.length,weight:b.length?b[b.length-1].weight_kg:null,byDay,measurements:b,avgKcal:nvals.length?nvals.reduce((s,x)=>s+x.k,0)/nvals.length:0,avgProtein:nvals.length?nvals.reduce((s,x)=>s+x.p,0)/nvals.length:0,avgSteps:svals.length?svals.reduce((s,x)=>s+x,0)/svals.length:0,loggedDays:nvals.length,activityDays:svals.length};
 }}
 async function render(){tab=LEGACY_TABS[tab]||tab;if(!aiUnlocked&&tab!=='ai'&&tab!=='account')tab='ai';let root=$('#root');root.innerHTML=`<div class="app">${nav()}<main class="main">${header()}<div class="page" id="pagebody"><span class="loader"></span> Loading…</div></main></div><div class="mobilebar">${NAV_ITEMS.map(x=>navBtn(x,true)).join('')}</div>`;
-const mobileBar=root.querySelector('.mobilebar');const activeNav=mobileBar?.querySelector('.active');if(mobileBar&&activeNav&&window.innerWidth<=860)mobileBar.scrollLeft=Math.max(0,activeNav.offsetLeft-(mobileBar.clientWidth-activeNav.offsetWidth)/2);try{await loadActivePlan();if(tab==='ai')await loadModule();if(tab==='weight')await loadWeight();if(tab==='prep')await loadGroceries();if(tab==='workout'||tab==='coach'){await loadPlanHistory();if(tab==='workout'&&aiActivePlan&&!wkHist){try{await loadWkHistory()}catch(e){console.error(e);wkHist={}}}}await loadInsights();$('#pagebody').innerHTML=({ai:aiPlannerPage,meals:mealsV3,workout:workoutV3,weight:weightV3,account:accountV3,coach:()=>aiActivePlan?coachPanel(true):pageHead('COACH','Coach','Your plan coach.')+needsPlanCard('coaching'),prep:prepV3})[tab]();wire();wireV2();wireV3();if(tab==='workout'&&wk)wireWk()}catch(e){fail(e);$('#pagebody').innerHTML=`<div class="notice warn">${esc(e.message)}</div>`}}
+const mobileBar=root.querySelector('.mobilebar');const activeNav=mobileBar?.querySelector('.active');if(mobileBar&&activeNav&&window.innerWidth<=860)mobileBar.scrollLeft=Math.max(0,activeNav.offsetLeft-(mobileBar.clientWidth-activeNav.offsetWidth)/2);try{await loadActivePlan();if(tab==='ai')await loadModule();if(tab==='weight')await loadWeight();if(tab==='prep')await loadGroceries();if(tab==='workout'||tab==='coach'){await loadPlanHistory();if(tab==='workout'&&aiActivePlan&&!wkHist){try{await loadWkHistory()}catch(e){console.error(e);wkHist={}}}}await loadInsights();$('#pagebody').innerHTML=({ai:aiPlannerPage,meals:mealsV3,workout:workoutV3,weight:weightV3,account:accountV3,coach:()=>aiActivePlan?coachPanel(true):pageHead('COACH','Coach','Your plan coach.')+needsPlanCard('coaching'),prep:prepV3})[tab]();wire();wireV2();wireV3();if(tab==='workout'&&wk)wireWk();if(tab==='workout')fbResume()}catch(e){fail(e);$('#pagebody').innerHTML=`<div class="notice warn">${esc(e.message)}</div>`}}
 function wire(){document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=async()=>{await gotoTab(b.dataset.tab)});document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=async()=>{await gotoTab(b.dataset.goto)});$('#prev').onclick=()=>changeDate(shift(date,-1));$('#next').onclick=()=>changeDate(shift(date,1));$('#date').onchange=e=>changeDate(e.target.value);$('#signout')?.addEventListener('click',logout);$('#logout2')?.addEventListener('click',logout);document.querySelectorAll('[data-meal]').forEach(b=>b.onclick=()=>toggleMeal(day.meals.find(x=>x.id===b.dataset.meal)).catch(fail));document.querySelectorAll('[data-editmeal]').forEach(b=>b.onclick=()=>editMealTemplate(b.dataset.editmeal));document.querySelectorAll('[data-delmeal]').forEach(b=>b.onclick=()=>deleteMealTemplate(b.dataset.delmeal));$('#addMealTemplate')?.addEventListener('click',addMealTemplate);document.querySelectorAll('[data-water]').forEach(b=>b.onclick=()=>addWater(Number(b.dataset.water)).catch(fail));
 $('#quickCheck')?.addEventListener('submit',e=>saveCheck(e,'quickCheck'));$('#checkForm')?.addEventListener('submit',e=>saveCheck(e,'checkForm'));$('#activityForm')?.addEventListener('submit',saveActivity);$('#foodForm')?.addEventListener('submit',saveFood);$('#workoutForm')?.addEventListener('submit',saveWorkoutV2);document.querySelectorAll('[data-ai-workout]').forEach(b=>b.onclick=()=>{const d=aiActivePlan?.plan?.training_week?.[Number(b.dataset.aiWorkout)],f=$('#workoutForm');if(!d||!f)return;f.elements.title.value=d.day+' · '+d.focus;f.elements.duration_minutes.value=d.session_minutes||45;const focus=String(d.focus||'').toLowerCase();f.elements.workout_type.value=/cardio|running|cycling|conditioning/.test(focus)?'cardio':/mobility|yoga|recovery|stretch/.test(focus)?'mobility':'strength';f.elements.exercises.value=(d.exercises||[]).map(x=>String(x).trim()+' | 3 | 10 | 0').join('\n');f.elements.notes.value='Loaded from the active AI training plan. Adjust exercises, sets, reps and loads to your ability.';f.scrollIntoView({behavior:'smooth',block:'start'});toast('AI session loaded. Review the details before saving.');});$('#measureForm')?.addEventListener('submit',saveMeasurement);$('#photoForm')?.addEventListener('submit',uploadPhoto);$('#groceryForm')?.addEventListener('submit',addGroceryV2);$('#prepForm')?.addEventListener('submit',addPrep);$('#settingsForm')?.addEventListener('submit',saveSettingsV2);
-document.querySelectorAll('[data-delfood]').forEach(b=>b.onclick=()=>deleteFood(b.dataset.delfood));document.querySelectorAll('[data-logfood]').forEach(b=>b.onclick=()=>logCatalogFood(b.dataset.logfood));document.querySelectorAll('[data-editcatalog]').forEach(b=>b.onclick=()=>editCatalogFood(b.dataset.editcatalog));document.querySelectorAll('[data-delcatalog]').forEach(b=>b.onclick=()=>deleteCatalogFood(b.dataset.delcatalog));document.querySelectorAll('[data-editfood]').forEach(b=>b.onclick=()=>editFood(b.dataset.editfood));document.querySelectorAll('[data-delwater]').forEach(b=>b.onclick=()=>deleteWater(b.dataset.delwater));document.querySelectorAll('[data-grocery]').forEach(b=>b.onchange=()=>updateGrocery(b.dataset.grocery,b.checked));document.querySelectorAll('[data-delgrocery]').forEach(b=>b.onclick=()=>deleteRow('grocery_items',b.dataset.delgrocery,'planning'));document.querySelectorAll('[data-prep]').forEach(b=>b.onchange=()=>updatePrep(b.dataset.prep,b.checked));document.querySelectorAll('[data-delprep]').forEach(b=>b.onclick=()=>deleteRow('prep_tasks',b.dataset.delprep,'planning'));document.querySelectorAll('[data-delworkout]').forEach(b=>b.onclick=()=>deleteRow('workout_sessions',b.dataset.delworkout,'training'));document.querySelectorAll('[data-editworkout]').forEach(b=>b.onclick=()=>editWorkoutV2(b.dataset.editworkout));document.querySelectorAll('[data-delmeasurement]').forEach(b=>b.onclick=()=>deleteRow('body_measurements',b.dataset.delmeasurement,'progress'));document.querySelectorAll('[data-editmeasurement]').forEach(b=>b.onclick=()=>editMeasurementV2(b.dataset.editmeasurement));document.querySelectorAll('[data-delphoto]').forEach(b=>b.onclick=()=>deletePhotoV2(b.dataset.delphoto));document.querySelectorAll('[data-reminder-toggle]').forEach(b=>b.onchange=()=>toggleReminder(b.dataset.reminderToggle,b.checked));document.querySelectorAll('[data-delreminder]').forEach(b=>b.onclick=()=>deleteReminder(b.dataset.delreminder));$('#reminderForm')?.addEventListener('submit',saveReminder);$('#enableNotifications')?.addEventListener('click',enablePushNotifications);$('#disableNotifications')?.addEventListener('click',disablePushNotifications);$('#exportData')?.addEventListener('click',exportData);$('#aiIntakeForm')?.addEventListener('submit',generateAIPlan);$('#aiIntakeForm')?.addEventListener('input',updateAIEditPreview);$('#aiIntakeForm')?.addEventListener('change',updateAIEditPreview);document.querySelectorAll('[data-ai-generate-new]').forEach(b=>b.onclick=()=>generateFreshAIPlan(b));$('#aiRefineForm')?.addEventListener('submit',refineAIPlan);document.querySelectorAll('[data-ai-apply]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiApply));document.querySelectorAll('[data-ai-restore]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiRestore,{quiet:true}));document.querySelectorAll('[data-dismiss-change]').forEach(b=>b.onclick=()=>{lastPlanChange=null;render()});}
+document.querySelectorAll('[data-delfood]').forEach(b=>b.onclick=()=>deleteFood(b.dataset.delfood));document.querySelectorAll('[data-logfood]').forEach(b=>b.onclick=()=>logCatalogFood(b.dataset.logfood));document.querySelectorAll('[data-editcatalog]').forEach(b=>b.onclick=()=>editCatalogFood(b.dataset.editcatalog));document.querySelectorAll('[data-delcatalog]').forEach(b=>b.onclick=()=>deleteCatalogFood(b.dataset.delcatalog));document.querySelectorAll('[data-editfood]').forEach(b=>b.onclick=()=>editFood(b.dataset.editfood));document.querySelectorAll('[data-delwater]').forEach(b=>b.onclick=()=>deleteWater(b.dataset.delwater));document.querySelectorAll('[data-grocery]').forEach(b=>b.onchange=()=>updateGrocery(b.dataset.grocery,b.checked));document.querySelectorAll('[data-delgrocery]').forEach(b=>b.onclick=()=>deleteRow('grocery_items',b.dataset.delgrocery,'planning'));document.querySelectorAll('[data-prep]').forEach(b=>b.onchange=()=>updatePrep(b.dataset.prep,b.checked));document.querySelectorAll('[data-delprep]').forEach(b=>b.onclick=()=>deleteRow('prep_tasks',b.dataset.delprep,'planning'));document.querySelectorAll('[data-delworkout]').forEach(b=>b.onclick=()=>deleteRow('workout_sessions',b.dataset.delworkout,'training'));document.querySelectorAll('[data-editworkout]').forEach(b=>b.onclick=()=>editWorkoutV2(b.dataset.editworkout));document.querySelectorAll('[data-delmeasurement]').forEach(b=>b.onclick=()=>deleteRow('body_measurements',b.dataset.delmeasurement,'progress'));document.querySelectorAll('[data-editmeasurement]').forEach(b=>b.onclick=()=>editMeasurementV2(b.dataset.editmeasurement));document.querySelectorAll('[data-delphoto]').forEach(b=>b.onclick=()=>deletePhotoV2(b.dataset.delphoto));document.querySelectorAll('[data-reminder-toggle]').forEach(b=>b.onchange=()=>toggleReminder(b.dataset.reminderToggle,b.checked));document.querySelectorAll('[data-delreminder]').forEach(b=>b.onclick=()=>deleteReminder(b.dataset.delreminder));$('#reminderForm')?.addEventListener('submit',saveReminder);$('#enableNotifications')?.addEventListener('click',enablePushNotifications);$('#disableNotifications')?.addEventListener('click',disablePushNotifications);$('#exportData')?.addEventListener('click',exportData);$('#aiIntakeForm')?.addEventListener('submit',generateAIPlan);$('#aiIntakeForm')?.addEventListener('input',updateAIEditPreview);$('#aiIntakeForm')?.addEventListener('change',updateAIEditPreview);document.querySelectorAll('[data-ai-generate-new]').forEach(b=>b.onclick=()=>generateFreshAIPlan(b));$('#aiRefineForm')?.addEventListener('submit',refineAIPlan);$('#aiRefineForm textarea')?.addEventListener('input',e=>{rf.text=e.target.value;rfInterrupted=false;$('#aiRefineForm .rf-note')?.classList.add('hidden');rfSave()});document.querySelectorAll('[data-ai-apply]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiApply));document.querySelectorAll('[data-ai-restore]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiRestore,{quiet:true}));document.querySelectorAll('[data-dismiss-change]').forEach(b=>b.onclick=()=>{lastPlanChange=null;render()});}
 async function after(){await loadDay();await render()}
 async function saveCheck(e,id){e.preventDefault();let f=new FormData(e.currentTarget),obj={user_id:user.id,local_date:date};['sleep_hours','energy_score','hunger_score','mood_score','notes'].forEach(k=>{let v=f.get(k);if(v!==''&&v!=null)obj[k]=['sleep_hours'].includes(k)?Number(v):['energy_score','hunger_score','mood_score'].includes(k)?Number(v):v});try{await q(supabase.from('daily_checkins').upsert(obj,{onConflict:'user_id,local_date'}));toast('Check-in saved');await after()}catch(e){fail(e)}}
 async function saveActivity(e){e.preventDefault();let f=new FormData(e.currentTarget),o={user_id:user.id,local_date:date,source:'manual'};['steps','active_minutes','cardio_minutes','distance_km','calories_burned_kcal','notes'].forEach(k=>{let v=f.get(k);if(v!=='')o[k]=k==='notes'?v:Number(v)});try{await q(supabase.from('daily_activity').upsert(o,{onConflict:'user_id,local_date'}));toast('Activity saved');await after()}catch(e){fail(e)}}
@@ -652,7 +674,7 @@ async function saveReminder(e){e.preventDefault();const f=new FormData(e.current
 async function toggleReminder(id,enabled){try{await q(supabase.from('reminders').update({is_enabled:enabled}).eq('id',id).eq('user_id',user.id));await loadReminders();await render()}catch(e){fail(e)}}
 async function deleteReminder(id){if(!await uiConfirm('Delete?','Delete this reminder?',{confirm:'Delete',danger:true}))return;try{await q(supabase.from('reminders').delete().eq('id',id).eq('user_id',user.id));await loadReminders();await render()}catch(e){fail(e)}}
 async function exportData(){
- const tables=['user_settings','foods','meal_templates','meal_template_items','daily_targets','daily_meals','food_entries','daily_checkins','body_measurements','progress_photos','workout_sessions','workout_exercises','workout_sets','daily_activity','water_logs','grocery_items','prep_tasks','reminders','push_notification_deliveries','ai_plan_versions','agent_insights','agent_baseline'];
+ const tables=['user_settings','foods','meal_templates','meal_template_items','daily_targets','daily_meals','food_entries','daily_checkins','body_measurements','progress_photos','workout_sessions','workout_exercises','workout_sets','daily_activity','water_logs','grocery_items','prep_tasks','reminders','push_notification_deliveries','ai_plan_versions','agent_insights','agent_baseline','workout_feedback','workout_reviews'];
  const backup={product:'THE CUT 2.0',schema_version:1,exported_at:new Date().toISOString(),user_id:user.id,data:{}};
  try{const profile=await q(supabase.from('profiles').select('*').eq('id',user.id).maybeSingle());backup.data.profiles=profile?[profile]:[];for(const table of tables){let rows=[],offset=0,batch=[];do{batch=await q(supabase.from(table).select('*').eq('user_id',user.id).range(offset,offset+999));rows=rows.concat(batch);offset+=batch.length}while(batch.length===1000);backup.data[table]=rows}const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='the-cut-backup-'+today()+'.json';document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Your JSON backup has been generated.');return true}catch(e){fail(e);return false}
 }
@@ -746,17 +768,19 @@ function prepV3(){
 
 /* ---------- Workout logger ---------- */
 const WK_KEY=()=>'cut_wk_'+(user?.id||'x');
-let wk=null,wkHist=null,wkSessions=[],wkTick=null,wkRest=null,wkRestDefault=90;
+let wk=null,wkHist=null,wkSessions=[],wkTick=null,wkRest=null,wkRestDefault=90,wkReview=null;
 async function loadWkHistory(){
  const rows=await q(supabase.from('workout_exercises').select('exercise_name,created_at,workout_sets(set_number,reps,weight_kg)').eq('user_id',user.id).order('created_at',{ascending:false}).limit(300));
  const map={};
  rows.forEach(r=>{const k=r.exercise_name.trim().toLowerCase(),sets=(r.workout_sets||[]).slice().sort((a,b)=>a.set_number-b.set_number),m=map[k]??={last:null,best1:0,name:r.exercise_name};if(!m.last&&sets.length)m.last=sets;sets.forEach(s=>{m.best1=Math.max(m.best1,e1rm(Number(s.weight_kg)||0,Number(s.reps)||0))})});
  wkHist=map;
  wkSessions=await q(supabase.from('workout_sessions').select('id,title,local_date,duration_minutes,perceived_effort,workout_exercises(exercise_name,sort_order,workout_sets(set_number,reps,weight_kg))').eq('user_id',user.id).order('local_date',{ascending:false}).order('created_at',{ascending:false}).limit(8));
+ try{wkReview=(await q(supabase.from('workout_reviews').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(1)))[0]||null}catch(e){console.error(e);wkReview=null}
 }
-function wkMakeEx(name,n=3,reps=10){
+function wkMakeEx(name,n=3,reps=10,target=null,planned=''){
  const h=wkHist?.[name.trim().toLowerCase()],prev=h?.last||[],last=prev[prev.length-1];
- return {name,pr:false,sets:Array.from({length:n},(_,i)=>({kg:(prev[i]||last)?.weight_kg??'',reps:(prev[i]||last)?.reps??reps,done:false,pr:false}))};
+ // The plan is authoritative: its reps and any AI load target win over last time's numbers.
+ return {name,pr:false,planned,target,sets:Array.from({length:n},(_,i)=>({kg:target??(prev[i]||last)?.weight_kg??'',reps:planned?reps:(prev[i]||last)?.reps??reps,done:false,pr:false}))};
 }
 const wkSave=()=>{try{wk?localStorage.setItem(WK_KEY(),JSON.stringify(wk)):localStorage.removeItem(WK_KEY())}catch{}};
 function wkLoadDraft(){if(wk)return;try{const d=JSON.parse(localStorage.getItem(WK_KEY())||'null');if(d&&d.exs&&Date.now()-d.startedAt<18*3600e3)wk=d}catch{}}
@@ -767,9 +791,9 @@ function todaySession(){
 }
 async function wkBegin(idx){
  if(!wkHist){try{await loadWkHistory()}catch(e){console.error(e);wkHist={}}}
- let title='Workout',exs=[];
- if(idx!=='empty'){const d=(aiActivePlan?.plan?.training_week||[])[Number(idx)];if(d){title=(d.focus||d.day||'Workout');exs=(d.exercises||[]).map(parsePlanExercise).map(x=>wkMakeEx(x.name,x.sets,x.reps))}}
- wk={title,startedAt:Date.now(),date:today(),exs,effort:null,notes:'',best:{}};wkRest=null;wkSave();renderWk();
+ let title='Workout',exs=[],planDay='';
+ if(idx!=='empty'){const d=(aiActivePlan?.plan?.training_week||[])[Number(idx)];if(d){title=(d.focus||d.day||'Workout');planDay=String(d.day||'');exs=(d.exercises||[]).map(raw=>({raw:String(raw),...parsePlanExercise(raw)})).map(x=>wkMakeEx(x.name,x.sets,x.reps,planTargetKg(x.raw),x.raw))}}
+ wk={title,startedAt:Date.now(),date:today(),exs,effort:null,notes:'',best:{},planDay};wkRest=null;wkSave();renderWk();
 }
 function renderWk(keepScroll){const y=window.scrollY;$('#pagebody').innerHTML=workoutV3();wireWk();wireV3();if(keepScroll)window.scrollTo(0,y)}
 function fmtClock(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
@@ -802,6 +826,7 @@ function wkStartView(){
   return `<details class="wk-hist"><summary><span><strong>${esc(s.title)}</strong><small>${dateFmt(s.local_date,{day:'numeric',month:'short'})} · ${s.duration_minutes||0} min · ${fmt(vol)} kg${s.perceived_effort?' · RPE '+s.perceived_effort:''}</small></span><button class="btn sm ghost" data-delworkout="${s.id}" aria-label="Delete session">✕</button></summary>${exs.map(e=>`<div class="wk-hx"><b>${esc(e.exercise_name)}</b><span>${(e.workout_sets||[]).slice().sort((a,b)=>a.set_number-b.set_number).map(x=>`${fmt(x.weight_kg)}×${x.reps}`).join(' · ')}</span></div>`).join('')}</details>`}).join('');
  return `${pageHead('TRAINING','Workout','Open a session, log each set as you do it.')}
  ${card(ts?'Today · '+esc(ts.day):'No session planned today',ts?`<h2 class="wk-hero">${esc(ts.focus)}</h2><p class="muted small">${Number(ts.session_minutes)||0} min · ${(ts.exercises||[]).length} exercises</p><div class="wk-chips">${(ts.exercises||[]).slice(0,6).map(x=>`<span>${esc(parsePlanExercise(x).name)}</span>`).join('')}</div><button class="btn primary wk-go" data-wkstart="${ts.i}">Start workout</button>`:`<p class="muted">Rest day by your plan. You can still start a session if you want one.</p><button class="btn primary wk-go" data-wkstart="empty">Start an empty workout</button>`)}
+ ${wkReviewCard()}
  ${all.length>(ts?1:0)?`<div style="margin-top:16px">${card('Other sessions in your plan',all.filter(d=>!ts||d.i!==ts.i).map(d=>`<div class="listitem"><div class="grow"><strong>${esc(d.day)} · ${esc(d.focus)}</strong><small>${Number(d.session_minutes)||0} min · ${(d.exercises||[]).length} exercises</small></div><button class="btn sm" data-wkstart="${d.i}">Start</button></div>`).join('')+`<div class="row" style="margin-top:10px"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout</button></div>`)}</div>`:(ts?`<div class="row" style="margin-top:12px"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout instead</button></div>`:'')}
  <div style="margin-top:16px">${card('Recent sessions',hist||'<div class="empty">Your finished sessions show up here with every set.</div>')}</div>
  <details class="wk-edit" style="margin-top:16px"><summary>Edit your weekly training plan</summary>${trainingWeekEditor()}</details>`;
@@ -813,7 +838,7 @@ function wkLive(){
  <div class="progress"><i style="width:${total?done/total*100:0}%"></i></div>
  <div class="wk-restpick"><span class="muted small">REST TIMER</span>${[60,90,120,180].map(s=>`<button class="chip ${wkRestDefault===s?'on':''}" data-wkrest="${s}">${s/60>=1&&s%60===0?s/60+' min':s+' s'}</button>`).join('')}</div>
  ${wk.exs.map((e,xi)=>{const h=wkHist?.[e.name.trim().toLowerCase()],prev=h?.last?h.last.map(x=>`${fmt(x.weight_kg)}×${x.reps}`).join('  ·  '):'First time — no history yet';
-  return `<section class="card wk-ex"><div class="row between"><h3>${esc(e.name)}${e.pr?' <span class="pr">PR</span>':''}</h3><button class="btn sm ghost" data-wkdelex="${xi}" aria-label="Remove ${esc(e.name)}">✕</button></div><div class="wk-prev">Last time: ${prev}</div>
+  return `<section class="card wk-ex"><div class="row between"><h3>${esc(e.name)}${e.pr?' <span class="pr">PR</span>':''}</h3><button class="btn sm ghost" data-wkdelex="${xi}" aria-label="Remove ${esc(e.name)}">✕</button></div><div class="wk-prev">Last time: ${prev}${e.target?` · Coach target ${fmt(e.target)} kg`:''}</div>
   <div class="wk-sets"><div class="wk-h"><span>SET</span><span>KG</span><span>REPS</span><span></span></div>${e.sets.map((s,si)=>`<div class="wk-set ${s.done?'done':''}"><span class="n">${si+1}</span><input inputmode="decimal" data-wk="${xi}:${si}:kg" value="${esc(s.kg)}" placeholder="0" aria-label="Set ${si+1} weight in kg"/><input inputmode="numeric" data-wk="${xi}:${si}:reps" value="${esc(s.reps)}" placeholder="0" aria-label="Set ${si+1} reps"/><button class="tick" data-wktick="${xi}:${si}" aria-pressed="${s.done}" aria-label="Mark set ${si+1} done">${s.done?'✓':''}</button></div>`).join('')}</div>
   <div class="row"><button class="btn sm" data-wkaddset="${xi}">+ Add set</button><button class="btn sm ghost" data-wkdelset="${xi}">− Remove set</button></div></section>`}).join('')}
  <section class="card"><form id="wkAddEx" class="row addrow"><input name="name" list="wkNames" placeholder="Add an exercise…" required maxlength="60" autocomplete="off"/><datalist id="wkNames">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist><button class="btn primary">Add</button></form></section>
@@ -834,7 +859,7 @@ function wkFinishModal(){
  document.body.appendChild(m);
  m.querySelectorAll('[data-rpe]').forEach(b=>b.onclick=()=>{wk.effort=Number(b.dataset.rpe);m.querySelectorAll('[data-rpe]').forEach(x=>x.classList.toggle('on',x===b))});
  $('#wkBack').onclick=()=>m.remove();
- $('#wkSaveBtn').onclick=async()=>{const b=$('#wkSaveBtn');b.disabled=true;b.textContent='Saving…';wk.notes=$('#wkNotes').value.trim();try{const vol=volOf(wk.exs);await wkPersist();m.remove();toast('Workout saved · '+fmt(vol)+' kg'+(prs.length?' · '+prs.length+' PR'+(prs.length>1?'s':''):''));wk=null;wkRest=null;wkSave();wkHist=null;await render()}catch(e){fail(e);b.disabled=false;b.textContent='Save workout'}};
+ $('#wkSaveBtn').onclick=async()=>{const b=$('#wkSaveBtn');b.disabled=true;b.textContent='Saving…';wk.notes=$('#wkNotes').value.trim();try{const vol=volOf(wk.exs),sid=await wkPersist(),snap=fbSnapshot(sid);m.remove();toast('Workout saved · '+fmt(vol)+' kg'+(prs.length?' · '+prs.length+' PR'+(prs.length>1?'s':''):''));wk=null;wkRest=null;wkSave();wkHist=null;await render();fbStart(snap)}catch(e){fail(e);b.disabled=false;b.textContent='Save workout'}};
 }
 async function wkPersist(){
  const exs=wk.exs.map(e=>({...e,sets:e.sets.filter(s=>s.done)})).filter(e=>e.sets.length);
@@ -844,6 +869,7 @@ async function wkPersist(){
   const sets=[];exRows.forEach(r=>{exs[r.sort_order].sets.forEach((s,i)=>sets.push({user_id:user.id,workout_exercise_id:r.id,set_number:i+1,reps:Math.max(0,Math.round(Number(s.reps)||0)),weight_kg:Math.max(0,Number(s.kg)||0)}))});
   if(sets.length)await q(supabase.from('workout_sets').insert(sets));
  }catch(e){await supabase.from('workout_sessions').delete().eq('id',ses.id).eq('user_id',user.id);throw e}
+ return ses.id;
 }
 function wireWk(){
  const pb=$('#pagebody');if(!pb||!wk)return;
@@ -862,10 +888,123 @@ function wireWk(){
  clearInterval(wkTick);wkTick=setInterval(wkTickFn,500);wkTickFn();
 }
 
+
+/* ---------- Post-workout feedback -> AI session review -> plan adjustment ---------- */
+const FB_KEY=()=>'cut_wkfb_'+(user?.id||'x');
+const FB_RATINGS=[['too_easy','Too easy'],['just_right','Just right'],['too_hard','Too hard']];
+const FB_ISSUES=[['joint_pain','Joint pain'],['muscle_pain','Muscle pain'],['form_breakdown','Form broke down'],['couldnt_hit_reps','Couldn’t hit reps'],['felt_weak_tired','Felt weak or tired'],['equipment_unavailable','Equipment taken'],['ran_out_of_time','Ran out of time'],['boring_or_dislike','Don’t like it']];
+let fb=null;
+function fbSave(){try{fb?localStorage.setItem(FB_KEY(),JSON.stringify(fb)):localStorage.removeItem(FB_KEY())}catch{}}
+function fbSnapshot(sid){
+ return {uid:user.id,sid,title:wk.title,date:wk.date,planDay:wk.planDay||'',effort:wk.effort,notes:wk.notes||'',mins:Math.max(1,Math.round((Date.now()-wk.startedAt)/60000)),at:Date.now(),i:0,saved:false,
+  exs:wk.exs.map(e=>({name:e.name,planned:e.planned||'',sets:e.sets.filter(s=>s.done).map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})),rating:'',issues:[],note:''})).filter(e=>e.sets.length)};
+}
+function fbStart(snap){fb=snap;fbSave();fbOpen()}
+function fbResume(){
+ if(!fb){try{const d=JSON.parse(localStorage.getItem(FB_KEY())||'null');if(d&&d.uid===user.id&&d.exs?.length&&Date.now()-d.at<24*3600e3)fb=d}catch{}}
+ if(fb&&fb.uid!==user.id){fb=null}
+ if(fb)fbOpen();
+}
+function fbOpen(){
+ if(!fb||document.getElementById('fbModal'))return;
+ const m=document.createElement('div');m.className='modal-bg';m.id='fbModal';
+ m.innerHTML='<div class="modal fb" role="dialog" aria-modal="true" aria-label="Workout feedback"></div>';
+ document.body.appendChild(m);fbRender();
+}
+function fbSetsText(sets){return sets.map(s=>`${fmt(s.kg)}×${s.reps}`).join(' · ')}
+function fbRender(){
+ const box=document.querySelector('#fbModal .modal');if(!box||!fb)return;
+ const e=fb.exs[fb.i],n=fb.exs.length,last=fb.i===n-1;
+ box.innerHTML=`<div class="eyebrow">HOW DID IT GO? · ${fb.i+1} OF ${n}</div><h2>${esc(e.name)}</h2><p class="muted small">${esc(fbSetsText(e.sets))}</p>
+ <label class="muted small">HOW DID THIS FEEL?</label><div class="fb-chips" id="fbRate">${FB_RATINGS.map(([k,l])=>`<button type="button" class="chip ${e.rating===k?'on':''}" data-fbrate="${k}" aria-pressed="${e.rating===k}">${l}</button>`).join('')}</div>
+ <label class="muted small">ANY ISSUES?</label><div class="fb-chips" id="fbIssues">${FB_ISSUES.map(([k,l])=>`<button type="button" class="chip ${e.issues.includes(k)?'on':''}" data-fbissue="${k}" aria-pressed="${e.issues.includes(k)}">${l}</button>`).join('')}</div>
+ <textarea id="fbNote" rows="2" maxlength="300" placeholder="Anything else? e.g. left shoulder pinched on the way down (optional)">${esc(e.note)}</textarea>
+ <div class="row" style="margin-top:12px"><button class="btn ghost" id="fbBack" ${fb.i?'':'disabled'}>Back</button><button class="btn primary grow" id="fbNext">${last?'Analyze my session':'Next exercise'}</button></div>
+ <button class="btn ghost fb-skip" id="fbSkip">Skip the rest and analyze</button>`;
+ box.querySelectorAll('[data-fbrate]').forEach(b=>b.onclick=()=>{e.rating=e.rating===b.dataset.fbrate?'':b.dataset.fbrate;fbSave();fbRender()});
+ box.querySelectorAll('[data-fbissue]').forEach(b=>b.onclick=()=>{const k=b.dataset.fbissue;e.issues=e.issues.includes(k)?e.issues.filter(x=>x!==k):[...e.issues,k];fbSave();fbRender()});
+ $('#fbNote').oninput=ev=>{e.note=ev.target.value;fbSave()};
+ $('#fbBack').onclick=()=>{if(fb.i>0){fb.i--;fbSave();fbRender()}};
+ $('#fbNext').onclick=()=>{if(last)fbRun();else{fb.i++;fbSave();fbRender()}};
+ $('#fbSkip').onclick=fbRun;
+}
+function fbClose(){document.getElementById('fbModal')?.remove();fb=null;fbSave()}
+async function fbRun(){
+ const f=fb;if(!f)return;
+ if(aiBusy){toast('Another AI request is running. Try again in a moment.');return}
+ const box=document.querySelector('#fbModal .modal');
+ if(box)box.innerHTML='<div class="eyebrow">COACH REVIEW</div><h2>Analyzing your session…</h2><p class="muted small">Reading your sets and feedback, then adjusting your plan if it needs it.</p><div style="margin:18px 0"><span class="loader"></span></div>';
+ try{
+  aiBusy=true;setAIProgress('workout');
+  const withFb=f.exs.filter(e=>e.rating||e.issues.length||e.note.trim());
+  if(withFb.length&&!f.saved){
+   try{await q(supabase.from('workout_feedback').insert(withFb.map(e=>({user_id:user.id,workout_session_id:f.sid,exercise_name:e.name.slice(0,60),rating:e.rating||null,issues:e.issues,note:e.note.trim()||null}))));f.saved=true;fbSave()}
+   catch(err){console.error(err)}
+  }
+  const res=await callAIPlanner('workout_review',undefined,{session:{id:f.sid,title:f.title,date:f.date,duration_min:f.mins,effort:f.effort,notes:f.notes,plan_day:f.planDay,exercises:f.exs.map(e=>({name:e.name,planned:e.planned,sets:e.sets}))},feedback:withFb.map(e=>({exercise:e.name,rating:e.rating,issues:e.issues,note:e.note.trim()}))});
+  const review=await applyWorkoutReview(f,res);
+  fb=null;fbSave();wkHist=null;
+  fbShowResult(review);
+ }catch(err){fail(err);fbShowError(err)}
+ finally{aiBusy=false;setAIProgress(null)}
+}
+async function applyWorkoutReview(f,res){
+ const prev=aiActivePlan?.plan?.training_week||[],r=res.review||{};
+ let lines=[];
+ if(res.changed&&Array.isArray(res.training_week)){
+  await q(supabase.rpc('save_training_week',{p_week:res.training_week}));
+  try{await supabase.rpc('agent_ack_state')}catch(e){console.error(e)}
+  await loadActivePlan();await loadPlanHistory();
+  lines=diffWeek(prev,res.training_week);
+ }
+ const changed=lines.length>0;
+ const row={user_id:user.id,workout_session_id:f.sid,headline:r.headline||'Session review',analysis:r.analysis||'',issues:r.issues||[],change_notes:r.change_notes||[],prev_week:changed?prev:null,new_week:changed?res.training_week:null,model:res.model||null};
+ let saved=null;try{saved=await q(supabase.from('workout_reviews').insert(row).select('*').single())}catch(e){console.error(e)}
+ wkReview=saved||{...row,id:null,undone_at:null,created_at:new Date().toISOString()};
+ return wkReview;
+}
+function wkReviewBody(r){
+ const lines=r.new_week?diffWeek(r.prev_week,r.new_week):[],notes=r.change_notes||[],issues=r.issues||[];
+ return `<p class="fb-analysis">${esc(r.analysis)}</p>
+ ${issues.length?`<div class="fb-box"><b>What I noticed</b><ul>${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+ ${lines.length?`<div class="fb-box"><b>${r.undone_at?'Plan change (undone)':'Your training week was updated'}</b><ul class="chg">${lines.map(l=>`<li><b>${esc(l.label)}</b><span>${esc(l.detail)}</span></li>`).join('')}</ul>${notes.length?`<p class="muted small" style="margin:8px 0 0">${notes.map(esc).join(' · ')}</p>`:''}</div>`:`<div class="fb-box"><b>No plan changes needed</b><p class="muted small" style="margin:4px 0 0">Keep running next week’s sessions as planned.</p></div>`}`;
+}
+function wkReviewUndoable(r){return !!(r&&r.id&&r.new_week&&r.prev_week&&!r.undone_at&&JSON.stringify(aiActivePlan?.plan?.training_week||[])===JSON.stringify(r.new_week))}
+function fbShowResult(r){
+ const box=document.querySelector('#fbModal .modal');
+ if(!box){toast(r.headline||'Session reviewed');return}
+ box.classList.add('fb-result');
+ box.innerHTML=`<div class="eyebrow">COACH REVIEW</div><h2>${esc(r.headline)}</h2>${wkReviewBody(r)}<div class="row" style="margin-top:14px">${wkReviewUndoable(r)?'<button class="btn ghost" id="fbUndo">Undo change</button>':''}<button class="btn primary grow" id="fbDone">Done</button></div>`;
+ $('#fbDone').onclick=async()=>{fbClose();await render()};
+ $('#fbUndo')?.addEventListener('click',async ev=>{await undoWorkoutReview(r.id,ev.currentTarget,true)});
+}
+function fbShowError(err){
+ const box=document.querySelector('#fbModal .modal');if(!box)return;
+ box.innerHTML=`<div class="eyebrow">COACH REVIEW</div><h2>Couldn’t analyze that</h2><p class="muted">${esc(friendlyError(err).body.replace(/<[^>]+>/g,'')||err?.message||'Something went wrong.')} Your workout is saved. Your feedback is kept, so you can retry.</p><div class="row" style="margin-top:14px"><button class="btn ghost" id="fbClose">Close</button><button class="btn primary grow" id="fbRetry">Try again</button></div>`;
+ $('#fbClose').onclick=async()=>{fbClose();await render()};
+ $('#fbRetry').onclick=fbRun;
+}
+async function undoWorkoutReview(id,btn,fromModal){
+ const r=wkReview&&wkReview.id===id?wkReview:null;if(!r||!wkReviewUndoable(r))return;
+ if(btn)btn.disabled=true;
+ try{
+  await q(supabase.rpc('save_training_week',{p_week:r.prev_week}));
+  try{await supabase.rpc('agent_ack_state')}catch(e){console.error(e)}
+  await q(supabase.from('workout_reviews').update({undone_at:new Date().toISOString()}).eq('id',r.id).eq('user_id',user.id));
+  r.undone_at=new Date().toISOString();await loadActivePlan();await loadPlanHistory();
+  toast('Training week restored.');
+  if(fromModal){fbShowResult(r)}else await render();
+ }catch(e){fail(e);if(btn)btn.disabled=false}
+}
+function wkReviewCard(){
+ const r=wkReview;if(!r||Date.now()-new Date(r.created_at).getTime()>3*86400e3)return '';
+ return `<div style="margin-top:16px">${card('Coach review of your last session',`<h3 style="margin-top:0">${esc(r.headline)}</h3>${wkReviewBody(r)}${wkReviewUndoable(r)?`<button class="btn" data-wkundo="${esc(r.id)}">Undo this change</button>`:''}`)}</div>`;
+}
+
 /* ---------- wiring for the v3 pages ---------- */
 function wireV3(){
  wireAccount();
- document.querySelectorAll('[data-wkstart]').forEach(b=>b.onclick=()=>wkBegin(b.dataset.wkstart));
+ document.querySelectorAll('[data-wkstart]').forEach(b=>b.onclick=()=>wkBegin(b.dataset.wkstart));document.querySelectorAll('[data-wkundo]').forEach(b=>b.onclick=()=>undoWorkoutReview(b.dataset.wkundo,b));
  document.querySelectorAll('[data-prepview]').forEach(b=>b.onclick=()=>{prepView=b.dataset.prepview;render()});
  document.querySelectorAll('[data-delweight]').forEach(b=>b.onclick=()=>deleteRow('body_measurements',b.dataset.delweight,'weight'));
  $('#weightForm')?.addEventListener('submit',saveWeightV3);

@@ -13,7 +13,7 @@ USER_TABLES = [
     "daily_checkins", "daily_meals", "daily_targets", "food_entries", "foods", "grocery_items",
     "meal_template_items", "meal_templates", "prep_tasks", "progress_photos", "push_notification_deliveries",
     "push_subscriptions", "reminders", "user_settings", "water_logs", "workout_exercises",
-    "workout_sessions", "workout_sets",
+    "workout_feedback", "workout_reviews", "workout_sessions", "workout_sets",
 ]
 
 

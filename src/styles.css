@@ -263,3 +263,9 @@ details.fold{padding:0}details.fold>summary{list-style:none;display:flex;justify
 #bellMenu .dot2{flex:0 0 8px;height:8px;border-radius:50%;margin-top:6px;background:transparent}#bellMenu .unread .dot2{background:var(--lime)}
 #bellMenu .bm-item span{min-width:0}#bellMenu strong{display:block;font-size:13px}#bellMenu em{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}
 #bellMenu .bm-empty{padding:18px 12px;color:var(--muted);font-size:13px}#bellMenu .bm-foot{margin-top:4px;background:var(--lime);color:#172318;border:0;border-radius:11px;padding:12px;font-weight:700;min-height:44px}
+/* ===== post-workout feedback + coach review ===== */
+.modal.fb{text-align:left}.modal.fb h2{margin:6px 0 4px}.modal.fb label{display:block;margin:14px 0 6px;letter-spacing:1px}
+.fb-chips{display:flex;flex-wrap:wrap;gap:7px}.modal.fb textarea{width:100%;margin-top:14px}
+.fb-skip{display:block;width:100%;margin-top:6px;font-size:12px;color:var(--muted)}
+.fb-analysis{margin:10px 0}.fb-box{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:13px}
+.fb-box ul{margin:6px 0 0;padding-left:18px}.fb-box ul.chg{list-style:none;padding:0}.fb-box ul.chg li{display:grid;gap:2px;padding:6px 0;border-top:1px solid var(--line)}.fb-box ul.chg li:first-child{border-top:0}.fb-box ul.chg span{color:var(--muted);font-size:12px}

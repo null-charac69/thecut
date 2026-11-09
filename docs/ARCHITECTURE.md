@@ -10,11 +10,12 @@ Browser (src/index.html + app.js + lib/*.js + styles.css)
 Postgres
   |-- triggers on food_entries, water_logs, body_measurements, workout_sessions,
   |   daily_checkins, daily_meals, ai_plan_versions -> agent_scan() -> agent_insights
-  '-- RPCs: agent_scan_me(), agent_week_summary()
+  |-- workout_feedback (per-exercise feedback), workout_reviews (AI session review + before/after week for Undo)
+  '-- RPCs: agent_scan_me(), agent_week_summary(), save_training_week()
 ```
 
 ## Principles
-- The model proposes; server code validates; the user approves. AI never silently changes a plan.
+- The model proposes; server code validates. Changes to a plan are either approved by the user or applied automatically with a visible "what changed" and an Undo (plan refine, post-workout training review). AI never silently changes a plan.
 - Missing data is unknown, never zero.
 - User writes never fail because of the coach (trigger errors are swallowed).
 - Only aggregated data goes to the LLM provider.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { e1rm, volOf, parsePlanExercise, parseWorkoutExerciseLine } from '../../src/lib/workout.js';
+import { e1rm, volOf, parsePlanExercise, parseWorkoutExerciseLine, planTargetKg, diffWeek } from '../../src/lib/workout.js';
 
 test('e1rm uses the Epley formula and is 0 for empty input', () => {
   assert.ok(Math.abs(e1rm(100, 5) - 100 * (1 + 5 / 30)) < 1e-9);
@@ -46,4 +46,32 @@ test('parseWorkoutExerciseLine parses count | reps | kg and rejects empty names'
   assert.equal(r.sets.length, 3);
   assert.deepEqual(r.sets[0], { set_number: 1, reps: 5, weight_kg: 100 });
   assert.equal(parseWorkoutExerciseLine(' | 3@5'), null);
+});
+
+test('planTargetKg reads an AI load target and ignores everything else', () => {
+  assert.equal(planTargetKg('Bench Press 3x8 @ 62.5 kg'), 62.5);
+  assert.equal(planTargetKg('Squat 4x6 (try 100kg)'), 100);
+  assert.equal(planTargetKg('Pull-ups 3x8'), null);
+  assert.equal(planTargetKg('Row 3x10 @ 0 kg'), null);
+  assert.equal(planTargetKg(''), null);
+});
+
+test('diffWeek lists minutes, load, added and removed exercises per day', () => {
+  const prev = [
+    { day: 'Mon', focus: 'Push', session_minutes: 60, exercises: ['Bench Press 3x8', 'Overhead Press 3x8', 'Dips 3x10'] },
+    { day: 'Tue', focus: 'Rest', session_minutes: 0, exercises: [] },
+  ];
+  const next = [
+    { day: 'Mon', focus: 'Push', session_minutes: 55, exercises: ['Bench Press 3x8 @ 62.5 kg', 'Landmine Press 3x10', 'Dips 3x10'] },
+    { day: 'Tue', focus: 'Rest', session_minutes: 0, exercises: [] },
+  ];
+  const d = diffWeek(prev, next);
+  assert.equal(d.length, 1);
+  assert.equal(d[0].label, 'Mon · Push');
+  assert.match(d[0].detail, /60 → 55 min/);
+  assert.match(d[0].detail, /Bench Press 3x8 → Bench Press 3x8 @ 62.5 kg/);
+  assert.match(d[0].detail, /added Landmine Press 3x10/);
+  assert.match(d[0].detail, /removed Overhead Press 3x8/);
+  assert.deepEqual(diffWeek(prev, prev), []);
+  assert.deepEqual(diffWeek(null, next), []);
 });

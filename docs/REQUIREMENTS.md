@@ -47,7 +47,7 @@ Evidence names a function in `src/index.html`, a file or edge function, or a dat
 
 ## 2. Product overview
 
-THE CUT is a single-user-per-account web app. A new user signs up, verifies their email, completes an AI intake, reviews an AI-generated plan (nutrition targets, meals, groceries, prep tasks, training week) and applies it. Only then do the daily tabs unlock. Day to day the user ticks meals, logs extras, logs weight, runs live workouts and ticks groceries. A database-driven coach watches the logs and raises insights; an LLM adds weekly reviews, plan-edit review and a chat. **The AI never changes a plan on its own: it writes drafts that the user applies.**
+THE CUT is a single-user-per-account web app. A new user signs up, verifies their email, completes an AI intake, reviews an AI-generated plan (nutrition targets, meals, groceries, prep tasks, training week) and applies it. Only then do the daily tabs unlock. Day to day the user ticks meals, logs extras, logs weight, runs live workouts and ticks groceries. A database-driven coach watches the logs and raises insights; an LLM adds weekly reviews, plan-edit review and a chat. **The AI never changes a plan silently: plan refinements and post-workout training adjustments are applied automatically, always show exactly what changed, and can be undone.**
 
 ### 2.1 Primary navigation
 
@@ -225,6 +225,10 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | WORK-14 | Recent sessions (last 8) are listed with date, duration, volume, effort and every set; sessions can be deleted after confirmation | P1 | Done | FE `wkStartView`, `deleteRow` |
 | WORK-15 | Weekly training plan can be edited as text (`Day | Focus | minutes | exercises`) and saved; the change is reviewed by the coach | P1 | Done | FE `trainingWeekEditor`, `saveTrainingWeek`; DB RPC `save_training_week` |
 | WORK-16 | Edit an already-saved session (title, duration, exercises) | P2 | Partial | FE `editWorkoutV2` exists; entry point only on legacy `training` tab (KL-03); uses `prompt()` |
+| WORK-17 | After saving a workout, a popup walks through each exercise with quick feedback: too easy / just right / too hard, issue chips (joint or muscle pain, form, missed reps, tired, equipment, time, dislike) and an optional note. Every step is skippable, and unfinished feedback survives a reload (24 h) | P1 | Done | FE `fbStart`, `fbRender`, `fbResume` (`cut_wkfb_<uid>`); DB `workout_feedback` |
+| WORK-18 | The finished session, feedback, recent history of the same lifts and the live training week go to the AI (`workout_review`), which explains how the session went, lists issues and proposes a revised week | P1 | Done | EF `workoutReview`; `workout.ts` |
+| WORK-19 | The revised week is validated server-side (same days and order, rest days untouched, session length within 30%, 1–10 exercises, at most 8 sets) and then auto-applied to the active plan's training week; the user sees the exact differences and can Undo while the week is unchanged | P1 | Done | EF `normalizeWeek`; FE `applyWorkoutReview`, `undoWorkoutReview`; DB `workout_reviews`, `save_training_week` |
+| WORK-20 | AI load targets in plan exercise strings (`Bench Press 3x8 @ 62.5 kg`) pre-fill the sets and show as the coach target; plan reps win over last time's reps | P2 | Done | FE `planTargetKg`, `wkMakeEx` |
 
 ### 4.7 Weight (WGT)
 

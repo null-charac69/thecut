@@ -1,9 +1,11 @@
 // THE CUT — AI planner/coach edge function (user-triggered, JWT required).
-// Actions: generate, refine, review, assess (judge the user's direct plan edits), chat (tool-using coach).
+// Actions: generate, refine, review, assess (judge the user's direct plan edits), chat (tool-using coach),
+// workout_review (analyse a finished session + feedback and propose a revised training week).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { chatJson, LlmError } from "./llm.ts";
 import { cleanProfile, normalizePlan, PROMPT_VERSION, qualityChecks, validateProfile } from "./plan.ts";
+import { cleanReviewInput, cleanReviewOutput, normalizeWeek, sameWeek, WORKOUT_PROMPT_VERSION, WORKOUT_SYSTEM } from "./workout.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -296,6 +298,85 @@ async function assess(sb: Sb) {
   return reply({ status: "concern", message, concerns, changes });
 }
 
+// Analyses one finished workout and proposes a revised training week. Writes nothing: the client applies the week
+// through the save_training_week RPC and offers Undo, exactly like a direct edit.
+// deno-lint-ignore no-explicit-any
+async function workoutReview(sb: Sb, body: any) {
+  const { input, error } = cleanReviewInput(body);
+  if (!input) return reply({ error }, 400);
+  const live = await liveState(sb);
+  const current = live?.training_week;
+  if (!live?.plan_id || !Array.isArray(current) || !current.length) return reply({ error: "Generate and apply a plan first." }, 400);
+  try {
+    const names = new Set(input.session.exercises.map((e) => e.name.toLowerCase()));
+    const [inputsRow, hist, fb] = await Promise.all([
+      activeInputs(sb),
+      sb.from("workout_sessions")
+        .select("id,title,local_date,perceived_effort,workout_exercises(exercise_name,workout_sets(set_number,reps,weight_kg))")
+        .order("local_date", { ascending: false }).order("created_at", { ascending: false }).limit(12),
+      sb.from("workout_feedback").select("exercise_name,rating,issues,note,created_at,workout_session_id")
+        .order("created_at", { ascending: false }).limit(40),
+    ]);
+    // Compact per-lift history from earlier sessions (this session excluded): best set per session, newest first.
+    const history: Record<string, string[]> = {};
+    // deno-lint-ignore no-explicit-any
+    for (const ws of (hist.data ?? []) as any[]) {
+      if (ws.id === input.session.id) continue;
+      for (const ex of ws.workout_exercises ?? []) {
+        const k = String(ex.exercise_name ?? "").trim().toLowerCase();
+        if (!names.has(k)) continue;
+        // deno-lint-ignore no-explicit-any
+        const sets = (ex.workout_sets ?? []) as any[];
+        if (!sets.length) continue;
+        const best = sets.reduce((a, x) => (Number(x.weight_kg) * (1 + Number(x.reps) / 30) > Number(a.weight_kg) * (1 + Number(a.reps) / 30) ? x : a), sets[0]);
+        (history[k] ??= []).push(`${ws.local_date}: ${sets.length} sets, best ${Number(best.weight_kg)}kg x ${best.reps}`);
+      }
+    }
+    for (const k of Object.keys(history)) history[k] = history[k].slice(0, 4);
+    const pastFeedback = ((fb.data ?? []) as Array<Record<string, unknown>>)
+      .filter((f) => f.workout_session_id !== input.session.id && names.has(String(f.exercise_name ?? "").toLowerCase()))
+      .slice(0, 8).map((f) => ({ exercise: f.exercise_name, rating: f.rating, issues: f.issues, note: f.note, on: String(f.created_at).slice(0, 10) }));
+    const payload = {
+      profile: inputsRow?.inputs
+        ? { goal: inputsRow.inputs.goal, experience: inputsRow.inputs.training_experience, days_per_week: inputsRow.inputs.training_days_per_week, location: inputsRow.inputs.training_location, notes: String(inputsRow.inputs.additional_notes ?? "").slice(0, 300) }
+        : null,
+      session: input.session,
+      feedback: input.feedback,
+      recent_history_same_lifts: history,
+      earlier_feedback_same_lifts: pastFeedback,
+      current_training_week: current,
+    };
+    const prompt = `<user_data>\n${JSON.stringify(payload).slice(0, 9000)}\n</user_data>\nReview this session and return the JSON object.`;
+    let r = await chatJson({ system: WORKOUT_SYSTEM, user: prompt, maxTokens: 2500, temperature: 0.3 });
+    // deno-lint-ignore no-explicit-any
+    let j = (r.json ?? {}) as any;
+    let norm = normalizeWeek(current, j.training_week);
+    if (!norm.week) {
+      r = await chatJson({
+        system: WORKOUT_SYSTEM,
+        user: prompt + `\nYour previous answer was rejected: ${norm.problems.join(" ")} Return a corrected JSON object.`,
+        maxTokens: 2500,
+        temperature: 0.2,
+      });
+      j = (r.json ?? {}) as any;
+      norm = normalizeWeek(current, j.training_week);
+    }
+    const out = cleanReviewOutput(j);
+    if (!out.analysis) return reply({ error: "The AI returned an empty review. Try again." }, 502);
+    if (!norm.week) {
+      // Keep the analysis, change nothing: a bad proposal must never reach the plan.
+      console.error("workout week rejected", norm.problems);
+      return reply({ review: { ...out, change_notes: [] }, training_week: null, changed: false, model: r.model, prompt_version: WORKOUT_PROMPT_VERSION });
+    }
+    const changed = !sameWeek(current, norm.week);
+    return reply({ review: changed ? out : { ...out, change_notes: [] }, training_week: changed ? norm.week : null, changed, model: r.model, prompt_version: WORKOUT_PROMPT_VERSION });
+  } catch (e) {
+    if (e instanceof LlmError) return reply({ error: e.message }, e.status);
+    console.error("workout_review failure", String(e));
+    return reply({ error: "AI coach is temporarily unavailable." }, 502);
+  }
+}
+
 // Tool-using coach chat. Provider-agnostic: tools are driven through a JSON protocol, not native function calling.
 // deno-lint-ignore no-explicit-any
 async function chat(sb: Sb, userId: string, rawMessages: any) {
@@ -427,6 +508,7 @@ Deno.serve(async (req: Request) => {
   if (action === "review") return await review(supabase);
   if (action === "assess") return await assess(supabase);
   if (action === "chat") return await chat(supabase, userData.user.id, body?.messages);
+  if (action === "workout_review") return await workoutReview(supabase, body);
   if (action !== "generate" && action !== "refine") return reply({ error: "Unknown action." }, 400);
 
   const profileError = validateProfile(body?.profile);
