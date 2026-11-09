@@ -19,7 +19,7 @@ API and e2e tests sign in as throwaway accounts. They are **never** the real use
 | `E2E_BASE_URL` | e2e | defaults to production; use a Vercel preview URL to test a branch |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | api | default to the production project and its public key |
 
-Tests skip (not fail) when credentials are missing. Add them as GitHub Actions secrets for CI. Never commit credentials.
+Tests skip (not fail) when credentials are missing. Export them in your shell to run locally. Never commit credentials.
 
 Create a throwaway user with the SQL pattern in `docs/RUNBOOK.md` or the Supabase dashboard (Auth, Add user, auto-confirm).
 
@@ -33,7 +33,7 @@ E2E_EMAIL=... E2E_PASSWORD=... npm run test:e2e
 ```
 
 ## CI
-`.github/workflows/ci.yml`: unit on every push/PR; API tests on every push/PR; e2e on pushes to `main` and manual runs.
+None. GitHub Actions was removed (hosted runners need a billing method). Run `npm run check` locally before merging; Vercel preview deploys are the only automated gate.
 
 ## Not covered
 Signed-in feature flows (logging meals, workouts, weight), AI generation quality, push delivery, and delete-account's actual wipe (verified manually with a throwaway user, see REQUIREMENTS ACCT-07).

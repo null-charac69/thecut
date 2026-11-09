@@ -307,7 +307,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | QA-01 | Unit tests for pure logic and plan validation (25 tests, all passing) | P1 | Done | `tests/unit/*.test.mjs`; `npm run test:unit` |
 | QA-02 | API/RLS tests: cross-user read/update/delete/insert/reassign blocked, anon sees nothing, plan RPC and storage isolated, edge functions reject bad calls (63 tests) | P1 | Partial | `tests/api/`; expected results confirmed manually against production; the suite itself could not be run from the workspace (no network) (OI-13) |
 | QA-03 | Browser smoke tests (assets, headers, sign-in error dialog, plan gate, Account page, delete-dialog guard, sign-out) | P1 | Partial | `tests/e2e/`; Chrome launch and asset test pass locally, flows verified manually in a browser (OI-13) |
-| QA-04 | CI workflow runs lint, typecheck, unit, API and e2e | P1 | Partial | `.github/workflows/ci.yml` committed; Actions runs not observed, secrets not yet added (OI-13) |
+| QA-04 | CI workflow runs lint, typecheck, unit, API and e2e | P1 | Skipped | Removed: GitHub Actions needs a billing method. Run `npm run check` locally |
 | QA-05 | Lint (`no-undef`, redeclare, unreachable) over `src/` and strict JSDoc typecheck over `src/lib/` | P2 | Done | `eslint.config.mjs`, `jsconfig.json`; `npm run check` |
 | QA-06 | Testing guide and throwaway-user procedure | P2 | Done | `docs/TESTING.md` |
 
@@ -498,7 +498,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | PWA (`5af461b`) | Manifest, icons, install meta, cache headers |
 | Cleanup (`96c9e94`) | 7 superseded duplicate functions removed; 11 style blocks merged into one |
 | Asset split (`1c6915f`) | `styles.css`, `app.js`, `lib/` modules; inline scripts removed; CSP `script-src` without `'unsafe-inline'` |
-| Test suite (`2a32896`) | Unit, API/RLS, e2e smoke, CI workflow |
+| Test suite (`2a32896`) | Unit, API/RLS, e2e smoke (CI workflow later removed) |
 | Typecheck and docs | ESLint, strict JSDoc typecheck for `lib/`, README/RUNBOOK drift fixed |
 
 ---
@@ -519,7 +519,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | OI-10 | Weight-row delete confirmation not exercised in a signed-in browser test | Test | P2 |
 | OI-11 | Decide: restore the app tour (rewrite copy for the six tabs, unhide button) or delete the dormant tour code | Product decision | P2 |
 | OI-12 | Reachable UI for features that exist only as backend or legacy code (water, check-ins, activity, food catalog, progress photos, body fat, reminders/push enable) — decide to restore or remove | Product decision | P1 |
-| OI-13 | Enable GitHub Actions, add secrets `TEST_A_*`, `TEST_B_*`, `E2E_*`, and confirm the first CI run is green; wire `startReminderLoop` or delete it (PUSH-05) | Repo settings / code | P1 |
+| OI-13 | Wire `startReminderLoop` or delete it (PUSH-05) | Repo settings / code | P1 |
 | OI-14 | Delete throwaway Auth users `rls-test-a`, `rls-test-b` if the API/e2e tests are retired (`rls-test` rows are removed by the tests themselves) | Supabase dashboard | P2 |
 | OI-15 | Try Install app on a physical Android phone | Manual test | P2 |
 | OI-16 | `app.js` is still one 160 KB module with shared mutable state; splitting page modules needs a shared `state` object first | Code change | P2 |
