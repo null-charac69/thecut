@@ -4,9 +4,9 @@
 |---|---|
 | **Product** | THE CUT 2.0 — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Date** | 2026-11-10 |
-| **Baseline** | `main` after merge of `chore/typecheck-docs` (previous baseline `81677d8`); production: https://the-cut-tracker.vercel.app |
+| **Baseline** | `main` @ `f8db945` (mobile layout, input-only Plan page, plan feedback; previous baseline `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
 | **Status** | Living document. Update the status column in the same pull request that changes behaviour. |
 
@@ -140,15 +140,19 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | PLAN-08 | Generated plans are validated and normalised server-side: calorie floor 1,200 kcal, ceiling 6,000 kcal, macro/calorie consistency, minimum protein (1.2 g/kg fat loss, 0.8 g/kg otherwise) | P0 | Done | EF `plan.ts` `normalizePlan`, `qualityChecks` |
 | PLAN-09 | A plan that fails quality checks gets one corrective retry; if it still fails the user sees a safety-check error and nothing is saved | P1 | Done | EF `runPlan`; returns 422 |
 | PLAN-10 | AI output is saved as a version, then **applied automatically**; Undo toast and "Undo last change" restore the previous plan; coach-proposed drafts still wait for Apply | P0 | Done | FE `saveAIDraft`; DB `ai_plan_versions.status` |
-| PLAN-11 | Plan review shows targets, reasoning, safety notes, meals, groceries, prep, training week | P1 | Done | FE `aiPlanCard` |
-| PLAN-12 | "Apply this plan to my workspace" asks for confirmation, then atomically activates the plan (targets, meal templates, groceries, prep tasks, training week) | P0 | Done | FE `applyAIPlan` + `uiConfirm`; DB RPC `apply_ai_plan_version` |
-| PLAN-13 | Profile stays editable; submitting edits analyses the change against the previous plan and creates a reviewable draft | P1 | Done | FE `describeAIProfileChanges`, `buildAIEditInstruction`, `updateAIEditPreview`, action `refine` |
-| PLAN-14 | "Refine with AI": free-text instruction produces a new draft; refinement keeps calories within 20% of the accepted plan unless the instruction requires more, never below 1,200 kcal | P1 | Done | FE `refineAIPlan`; EF action `refine`, `qualityChecks` |
+| PLAN-11 | On-page plan review (targets, reasoning, meals, groceries, prep, training week) | P1 | Removed | Superseded by PLAN-20 and the tabs themselves; `aiPlanCard` deleted |
+| PLAN-12 | Plans from the Coach (drafts) still need an explicit "Apply to my workspace" with confirmation; the RPC atomically activates the plan (targets, meal templates, groceries, prep tasks, training week) | P0 | Done | FE `applyAIPlan` + `uiConfirm`; DB RPC `apply_ai_plan_version` |
+| PLAN-13 | Profile stays editable; submitting edits analyses the change against the previous plan and applies the revised plan | P1 | Done | FE `describeAIProfileChanges`, `buildAIEditInstruction`, `updateAIEditPreview`, action `refine` |
+| PLAN-14 | "Refine plan": free-text instruction produces a revised plan that is applied automatically; refinement keeps calories within 20% of the accepted plan unless the instruction requires more, never below 1,200 kcal | P1 | Done | FE `refineAIPlan`; EF action `refine`, `qualityChecks` |
 | PLAN-15 | "Generate a fresh plan" creates a new plan independent of the current one | P2 | Done | FE `generateFreshAIPlan` |
-| PLAN-16 | Plan version history is listed; any version can be opened | P1 | Done | FE `aiPlannerPage` ("Plan versions"), `loadPlanHistory` |
+| PLAN-16 | Plan history is listed in Account with Restore on any older version; the Plan page offers "Undo last change" | P1 | Done | FE `accountV3` ("Plan history"), `aiPlanStatusCard`, `loadPlanHistory` |
 | PLAN-17 | Refinement uses the user's live plan (including direct edits) as the base | P1 | Done | EF `liveState`, `baselineRow` |
 | PLAN-18 | Prompt-injection hardening: user data is passed inside `<user_data>` and the model is told to treat it as data | P0 | Done | EF `SYSTEM` prompt |
 | PLAN-19 | Plan generation is attributed to a prompt version (`the-cut-plan-v2`) | P2 | Done | EF `plan.ts` `PROMPT_VERSION` |
+| PLAN-20 | After a plan is applied, Meals shows a dismissible "What changed" card: the AI's one-line reason plus a diff (targets, meals added/removed, per-meal kcal, groceries, training week) and "Undo this change" | P1 | Done | FE `planChangeCard`, `lastPlanChange`; `src/lib/plandiff.js` + unit tests |
+| PLAN-21 | Generation/refine shows progress that survives tab changes: shimmering button and a floating status pill with rotating messages; the user stays on the tab they moved to | P2 | Done | FE `setAIProgress`, `#aiProg` |
+| PLAN-22 | Plan page is input only: status card (active plan, draft waiting, undo), collapsed "Your details" with Edit, compact refine box | P1 | Done | FE `aiPlannerPage`, `aiPlanStatusCard`, `foldCard` |
+| PLAN-23 | Generate and Refine apply the plan immediately (no review step); Undo toast (9 s) restores the previous plan | P1 | Done | FE `saveAIDraft` → `applyAIPlan({auto:true})`, `toastUndo` |
 
 ### 4.3 AI service (AISVC)
 
@@ -171,7 +175,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | COACH-02 | Rules: tracking gap; protein and calories vs plan (7-day); skipped meals; hydration; training sessions vs plan; 14-day weight trend vs goal; recovery (low energy/sleep) | P1 | Done | DB `agent_scan`; `docs/AGENT.md` |
 | COACH-03 | Rules fire automatically on writes to food entries, water logs, body measurements, workout sessions, check-ins, daily meals and plan versions; trigger errors never block the user's write | P0 | Done | DB triggers `trg_agent_*` |
 | COACH-04 | Missing data is treated as unknown, never zero | P1 | Done | `docs/ARCHITECTURE.md`; DB rules |
-| COACH-05 | Insights stream live to the browser; the bell shows an unread count | P1 | Done | Realtime on `agent_insights`; FE `subscribeInsights`, `onInsightChange`, `#bell` |
+| COACH-05 | Insights stream live to the browser; the bell shows an unread count and opens a "Coach notes" dropdown (latest 5, unread dots, Open Coach) | P1 | Done | Realtime on `agent_insights`; FE `subscribeInsights`, `onInsightChange`, `openBellMenu`, `bellHTML` |
 | COACH-06 | Insights can be marked read and dismissed | P2 | Done | FE `markInsightsRead`, `dismissInsight` |
 | COACH-07 | "Review my week" produces an LLM summary (headline, summary, suggestions) | P1 | Done | FE `reviewWeek`; EF action `review`; DB `agent_week_summary` |
 | COACH-08 | A review can offer "Draft a plan update from this", which creates a draft needing approval | P1 | Done | FE `refineFromReview` |
@@ -272,12 +276,14 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | UX-07 | Unhandled promise rejections are caught and surfaced instead of failing silently | P2 | Done | FE `unhandledrejection` handler |
 | UX-08 | Form labels are linked to inputs automatically | P2 | Done | FE label-linking `MutationObserver` |
 | UX-09 | Auth message region is announced to screen readers (`role=status`, `aria-live=polite`) | P2 | Done | FE auth form |
-| UX-10 | Mobile: 16 px inputs (no iOS zoom), 44 px tap targets, bottom tab bar with lock icons | P2 | Done | FE CSS; `.mobilebar` |
+| UX-10 | Mobile: 16 px inputs (no iOS zoom), 44 px tap targets, six-slot bottom tab bar (no scrolling) with lock icons | P2 | Done | FE CSS "Mobile-first consolidation" block; `.mobilebar` |
 | UX-11 | Reduced-motion preference is respected | P2 | Done | FE CSS |
 | UX-12 | First-login app tour with a "? Tour" replay button | P2 | Removed | Button hidden by CSS (`#tourBtn{display:none}`), auto-start disabled at bootstrap; code remains dormant, copy names retired tabs (RM-06, KL-04) |
 | UX-13 | Loading states for pages and buttons ("Loading…", "Saving…", "Thinking…") | P2 | Done | FE `render`, `wkSaveBtn`, `coachChatBusy` |
 | UX-14 | Empty states on every list (no weigh-ins, no groceries, no sessions, etc.) | P2 | Done | FE `.empty` blocks |
 | UX-15 | Edit flows for meal templates, extras, catalog foods and saved sessions use native `prompt()` boxes | P2 | Partial | FE `addMealTemplate`, `editMealTemplate`, `editFood`, `editCatalogFood`, `editWorkout(V2)`, `editMeasurement(V2)` (OI-05) |
+| UX-16 | Mobile layout: single consolidated block at the end of `styles.css` replaces the stacked legacy rules; compact sticky top bar (date nav, bell, avatar), tighter page rhythm, 2-line subtitle clamp, Meals ordered progress → meals → extras | P1 | Done | FE CSS; verified at 390×844 in Chrome mobile mode with mocked Supabase, not on a physical device |
+| UX-17 | Tabs without a date picker show the logo mark and page title in the top bar on phones | P2 | Done | FE CSS `.topbar.nodate .crumb` |
 
 ### 4.11 Reminders and push notifications (PUSH)
 
@@ -500,6 +506,10 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | Asset split (`1c6915f`) | `styles.css`, `app.js`, `lib/` modules; inline scripts removed; CSP `script-src` without `'unsafe-inline'` |
 | Test suite (`2a32896`) | Unit, API/RLS, e2e smoke (CI workflow later removed) |
 | Typecheck and docs | ESLint, strict JSDoc typecheck for `lib/`, README/RUNBOOK drift fixed |
+| CI removed (`c144166`) | GitHub Actions workflow deleted (hosted runners need billing); `npm run check` is the local gate |
+| Mobile UI (`262418a`) | Consolidated mobile CSS; input-only Plan page; auto-apply with undo; plan history in Account |
+| Top bar title (`57a8b35`) | Logo mark and page title on non-date tabs |
+| Plan feedback (`f8db945`) | What-changed card, global AI progress pill, bell dropdown, button spacing |
 
 ---
 
@@ -558,6 +568,8 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | KL-06 | Edit flows for some items use native browser prompts (OI-05). |
 | KL-07 | The CSP blocks self-framing, so the app cannot be embedded for mobile-width testing. |
 | KL-10 | `app.js` still uses monkey-patched function overrides (e.g. `saveSettings=saveSettingsV2`); the strict typecheck therefore covers only `src/lib/`. |
+| KL-11 | Undo restores targets and meal templates of the previous plan, but grocery and prep items the newer plan added are not removed. |
+| KL-12 | Auto-applied plans skip the old review step; safety concerns now surface through the Coach (and the AI's own summary on the What-changed card). |
 | KL-08 | Nutrition and training output are AI estimates, not medical advice. |
 | KL-09 | The coach rules depend on data (water, check-ins) that has no reachable logging screen (KL-03), so those rules fire only on existing or imported data. |
 
@@ -569,3 +581,4 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 |---|---|---|
 | 1.0 | 2026-11-10 | Initial requirements register built from `main` @ `81677d8` |
 | 1.1 | 2026-11-10 | Added PWA and QA modules; asset split and CSP change; corrected PUSH-05 and UX-12; closed OI-09; new open items OI-13 to OI-17 |
+| 1.2 | 2026-11-10 | Mobile layout and top bar; input-only Plan page with auto-apply/undo (PLAN-11, 12, 13, 16 revised; PLAN-20 to 23 added); bell dropdown (COACH-05); UX-16/17; CI workflow removed (QA-04 Skipped); KL-11/12 |
