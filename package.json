@@ -1,0 +1,21 @@
+{
+  "name": "the-cut",
+  "private": true,
+  "type": "module",
+  "description": "THE CUT 2.0: dev tooling only. The app itself has no build step (see docs/TESTING.md).",
+  "scripts": {
+    "test:unit": "node --experimental-strip-types --no-warnings --test tests/unit/*.test.mjs",
+    "test:api": "python3 -m pytest tests/api -q",
+    "test:e2e": "playwright test -c tests/e2e/playwright.config.mjs",
+    "lint": "eslint src",
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "npm run lint && npm run typecheck && npm run test:unit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "typescript": "^5.6.0"
+  }
+}
