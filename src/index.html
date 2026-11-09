@@ -182,6 +182,20 @@ img,svg,canvas{max-width:100%}.table{display:block;max-width:100%;overflow-x:aut
 @media (max-width:860px){input,select,textarea{font-size:16px!important}.btn{min-height:44px}}
 </style>
 
+<style>
+.acct-id{display:flex;align-items:center;gap:14px}.acct-av{width:52px;height:52px;border-radius:50%;background:var(--lime);color:#14200f;display:grid;place-items:center;font-weight:800;font-size:22px;flex:0 0 52px}
+.acct-meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}.acct-meta small{display:block;color:var(--muted);font-size:10px;letter-spacing:.08em;margin-bottom:3px}.acct-meta b{font-size:14px}
+.acct-id .grow strong,.acct-id .grow small{display:block}.acct-id small{color:var(--muted);margin-top:2px}#acctForm .field{margin-bottom:12px}#acctForm .btn{margin-top:4px}
+.grid.g2:has(#acctForm){align-items:start}.acct-id .grow{flex:1 1 auto;min-width:0}.acct-id .btn{flex:0 0 auto}#acctForm .btn{min-width:140px}.acct-actions .btn{width:100%;justify-content:center}
+@media (max-width:860px){.acct-id{flex-wrap:wrap}.acct-id .btn{width:100%}#acctForm .btn{width:100%}}
+.acct-actions{display:flex;flex-direction:column;gap:8px}
+.danger-zone{border-color:#ff7e7355}.danger-zone h2{color:var(--red)}
+.del-list{margin:6px 0 4px;padding-left:20px;color:var(--muted);font-size:14px;line-height:1.7}
+#acctMenu{position:fixed;z-index:150;min-width:230px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column}
+#acctMenu .am-head{padding:10px 12px 8px;border-bottom:1px solid var(--line);margin-bottom:4px;display:flex;flex-direction:column}#acctMenu .am-head small{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis}
+#acctMenu button{background:none;border:0;color:var(--text);text-align:left;padding:11px 12px;border-radius:9px;font:inherit;font-size:14px;cursor:pointer;min-height:44px}#acctMenu button:hover,#acctMenu button:focus-visible{background:var(--panel2)}#acctMenu .am-danger{color:var(--red)}
+</style>
+
 </head>
 <body>
 <div id="root"><div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><div class="muted">Connecting securely…</div><span class="loader"></span></div></div></div>
@@ -253,7 +267,7 @@ const LEGACY_TABS={overview:'ai',nutrition:'meals',habits:'meals',training:'work
 function navBtn([id,ico,label,short],mobile){const locked=!aiUnlocked&&id!=='ai',cls=(tab===id?'active':'')+(locked?' locked':'')+(id==='ai'?' ai-first':'');
  return mobile?`<button data-tab="${id}" class="${cls}" ${locked?'aria-disabled="true"':''}><span>${locked?'🔒':ico}</span>${short}</button>`:`<button class="${cls}" data-tab="${id}" ${locked?'aria-disabled="true" title="Generate your first AI plan to unlock"':''}><span class="ico">${ico}</span>${label}${locked?'<span class="lock">🔒</span>':''}</button>`}
 function nav(){return `<aside class="sidebar"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>2.0 · YOUR WORKSPACE</small></div></div><div class="nav-label">YOUR WORKSPACE</div><nav class="nav">${NAV_ITEMS.map(x=>navBtn(x)).join('')}</nav><div class="side-spacer"></div><div class="sidebar-note"><strong>THE DAILY RULE</strong>Make the next good choice. Then repeat.</div><div class="side-status"><i class="dot"></i>Cloud sync enabled</div></aside>`}
-function header(){return `<header class="topbar${DATE_TABS.includes(tab)?'':' nodate'}"><div class="crumb">THE CUT / <b>${((NAV_ITEMS.find(x=>x[0]===tab)||[0,0,tab])[2]).toUpperCase()}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${date}" max="${today()}" style="width:145px;padding:6px 8px;font-size:11px"/><button class="pill" id="next" ${date>=today()?'disabled':''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">🔔${unreadCount()?`<b class="badge">${unreadCount()}</b>`:''}</button><button class="pill" id="tourBtn" title="Take the app tour" aria-label="Take the app tour">? Tour</button><span class="pill">${esc(user.email)}</span><button class="userpill" id="signout" title="Sign out">${esc((user.user_metadata?.name||user.email||'U').slice(0,1).toUpperCase())}</button></div></header>`}
+function header(){return `<header class="topbar${DATE_TABS.includes(tab)?'':' nodate'}"><div class="crumb">THE CUT / <b>${((NAV_ITEMS.find(x=>x[0]===tab)||[0,0,tab])[2]).toUpperCase()}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${date}" max="${today()}" style="width:145px;padding:6px 8px;font-size:11px"/><button class="pill" id="next" ${date>=today()?'disabled':''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">🔔${unreadCount()?`<b class="badge">${unreadCount()}</b>`:''}</button><button class="pill" id="tourBtn" title="Take the app tour" aria-label="Take the app tour">? Tour</button><span class="pill">${esc(user.email)}</span><button class="userpill" id="acctBtn" title="Account" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false">${esc((user.user_metadata?.name||user.email||'U').slice(0,1).toUpperCase())}</button></div></header>`}
 function pageHead(k,title,sub,extra=''){return `<div class="pagehead"><div><div class="eyebrow">${k}</div><h1>${title}<em>.</em></h1><p class="subtitle">${sub}</p></div>${extra}</div>`}
 function card(title,body,extra=''){return `<section class="card"><div class="section-title"><h2>${title}</h2>${extra}</div>${body}</section>`}
 function metric(label,value,unit,foot){return `<div class="card metric"><div class="label">${label}</div><strong>${value} <span class="muted" style="font-size:13px">${unit}</span></strong><small>${foot}</small></div>`}
@@ -405,8 +419,8 @@ activity.forEach(x=>{if(x.steps!==null)stepsByDay[x.local_date]=Number(x.steps)}
 let nvals=Object.values(nutritionByDay),svals=Object.values(stepsByDay);
 analyticsData={meals:m.filter(x=>x.status==='completed').length,workouts:w.length,weight:b.length?b[b.length-1].weight_kg:null,byDay,measurements:b,avgKcal:nvals.length?nvals.reduce((s,x)=>s+x.k,0)/nvals.length:0,avgProtein:nvals.length?nvals.reduce((s,x)=>s+x.p,0)/nvals.length:0,avgSteps:svals.length?svals.reduce((s,x)=>s+x,0)/svals.length:0,loggedDays:nvals.length,activityDays:svals.length};
 }}
-async function render(){tab=LEGACY_TABS[tab]||tab;if(!aiUnlocked&&tab!=='ai')tab='ai';let root=$('#root');root.innerHTML=`<div class="app">${nav()}<main class="main">${header()}<div class="page" id="pagebody"><span class="loader"></span> Loading…</div></main></div><div class="mobilebar">${NAV_ITEMS.map(x=>navBtn(x,true)).join('')}</div>`;
-const mobileBar=root.querySelector('.mobilebar');const activeNav=mobileBar?.querySelector('.active');if(mobileBar&&activeNav&&window.innerWidth<=860)mobileBar.scrollLeft=Math.max(0,activeNav.offsetLeft-(mobileBar.clientWidth-activeNav.offsetWidth)/2);try{await loadActivePlan();if(tab==='ai')await loadModule();if(tab==='weight')await loadWeight();if(tab==='prep')await loadGroceries();if(tab==='workout'||tab==='coach'){await loadPlanHistory();if(tab==='workout'&&aiActivePlan&&!wkHist){try{await loadWkHistory()}catch(e){console.error(e);wkHist={}}}}await loadInsights();$('#pagebody').innerHTML=({ai:aiPlannerPage,meals:mealsV3,workout:workoutV3,weight:weightV3,coach:()=>aiActivePlan?coachPanel(true):pageHead('COACH','Coach','Your plan coach.')+needsPlanCard('coaching'),prep:prepV3})[tab]();wire();wireV2();wireV3();if(tab==='workout'&&wk)wireWk()}catch(e){fail(e);$('#pagebody').innerHTML=`<div class="notice warn">${esc(e.message)}</div>`}}
+async function render(){tab=LEGACY_TABS[tab]||tab;if(!aiUnlocked&&tab!=='ai'&&tab!=='account')tab='ai';let root=$('#root');root.innerHTML=`<div class="app">${nav()}<main class="main">${header()}<div class="page" id="pagebody"><span class="loader"></span> Loading…</div></main></div><div class="mobilebar">${NAV_ITEMS.map(x=>navBtn(x,true)).join('')}</div>`;
+const mobileBar=root.querySelector('.mobilebar');const activeNav=mobileBar?.querySelector('.active');if(mobileBar&&activeNav&&window.innerWidth<=860)mobileBar.scrollLeft=Math.max(0,activeNav.offsetLeft-(mobileBar.clientWidth-activeNav.offsetWidth)/2);try{await loadActivePlan();if(tab==='ai')await loadModule();if(tab==='weight')await loadWeight();if(tab==='prep')await loadGroceries();if(tab==='workout'||tab==='coach'){await loadPlanHistory();if(tab==='workout'&&aiActivePlan&&!wkHist){try{await loadWkHistory()}catch(e){console.error(e);wkHist={}}}}await loadInsights();$('#pagebody').innerHTML=({ai:aiPlannerPage,meals:mealsV3,workout:workoutV3,weight:weightV3,account:accountV3,coach:()=>aiActivePlan?coachPanel(true):pageHead('COACH','Coach','Your plan coach.')+needsPlanCard('coaching'),prep:prepV3})[tab]();wire();wireV2();wireV3();if(tab==='workout'&&wk)wireWk()}catch(e){fail(e);$('#pagebody').innerHTML=`<div class="notice warn">${esc(e.message)}</div>`}}
 function wire(){document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=async()=>{await gotoTab(b.dataset.tab)});document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=async()=>{await gotoTab(b.dataset.goto)});$('#prev').onclick=()=>changeDate(shift(date,-1));$('#next').onclick=()=>changeDate(shift(date,1));$('#date').onchange=e=>changeDate(e.target.value);$('#signout')?.addEventListener('click',logout);$('#logout2')?.addEventListener('click',logout);document.querySelectorAll('[data-meal]').forEach(b=>b.onclick=()=>toggleMeal(day.meals.find(x=>x.id===b.dataset.meal)).catch(fail));document.querySelectorAll('[data-editmeal]').forEach(b=>b.onclick=()=>editMealTemplate(b.dataset.editmeal));document.querySelectorAll('[data-delmeal]').forEach(b=>b.onclick=()=>deleteMealTemplate(b.dataset.delmeal));$('#addMealTemplate')?.addEventListener('click',addMealTemplate);document.querySelectorAll('[data-water]').forEach(b=>b.onclick=()=>addWater(Number(b.dataset.water)).catch(fail));
 $('#quickCheck')?.addEventListener('submit',e=>saveCheck(e,'quickCheck'));$('#checkForm')?.addEventListener('submit',e=>saveCheck(e,'checkForm'));$('#activityForm')?.addEventListener('submit',saveActivity);$('#foodForm')?.addEventListener('submit',saveFood);$('#workoutForm')?.addEventListener('submit',saveWorkoutV2);document.querySelectorAll('[data-ai-workout]').forEach(b=>b.onclick=()=>{const d=aiActivePlan?.plan?.training_week?.[Number(b.dataset.aiWorkout)],f=$('#workoutForm');if(!d||!f)return;f.elements.title.value=d.day+' · '+d.focus;f.elements.duration_minutes.value=d.session_minutes||45;const focus=String(d.focus||'').toLowerCase();f.elements.workout_type.value=/cardio|running|cycling|conditioning/.test(focus)?'cardio':/mobility|yoga|recovery|stretch/.test(focus)?'mobility':'strength';f.elements.exercises.value=(d.exercises||[]).map(x=>String(x).trim()+' | 3 | 10 | 0').join('\n');f.elements.notes.value='Loaded from the active AI training plan. Adjust exercises, sets, reps and loads to your ability.';f.scrollIntoView({behavior:'smooth',block:'start'});toast('AI session loaded. Review the details before saving.');});$('#measureForm')?.addEventListener('submit',saveMeasurement);$('#photoForm')?.addEventListener('submit',uploadPhoto);$('#groceryForm')?.addEventListener('submit',addGroceryV2);$('#prepForm')?.addEventListener('submit',addPrep);$('#settingsForm')?.addEventListener('submit',saveSettingsV2);
 document.querySelectorAll('[data-delfood]').forEach(b=>b.onclick=()=>deleteFood(b.dataset.delfood));document.querySelectorAll('[data-logfood]').forEach(b=>b.onclick=()=>logCatalogFood(b.dataset.logfood));document.querySelectorAll('[data-editcatalog]').forEach(b=>b.onclick=()=>editCatalogFood(b.dataset.editcatalog));document.querySelectorAll('[data-delcatalog]').forEach(b=>b.onclick=()=>deleteCatalogFood(b.dataset.delcatalog));document.querySelectorAll('[data-editfood]').forEach(b=>b.onclick=()=>editFood(b.dataset.editfood));document.querySelectorAll('[data-delwater]').forEach(b=>b.onclick=()=>deleteWater(b.dataset.delwater));document.querySelectorAll('[data-grocery]').forEach(b=>b.onchange=()=>updateGrocery(b.dataset.grocery,b.checked));document.querySelectorAll('[data-delgrocery]').forEach(b=>b.onclick=()=>deleteRow('grocery_items',b.dataset.delgrocery,'planning'));document.querySelectorAll('[data-prep]').forEach(b=>b.onchange=()=>updatePrep(b.dataset.prep,b.checked));document.querySelectorAll('[data-delprep]').forEach(b=>b.onclick=()=>deleteRow('prep_tasks',b.dataset.delprep,'planning'));document.querySelectorAll('[data-delworkout]').forEach(b=>b.onclick=()=>deleteRow('workout_sessions',b.dataset.delworkout,'training'));document.querySelectorAll('[data-editworkout]').forEach(b=>b.onclick=()=>editWorkoutV2(b.dataset.editworkout));document.querySelectorAll('[data-delmeasurement]').forEach(b=>b.onclick=()=>deleteRow('body_measurements',b.dataset.delmeasurement,'progress'));document.querySelectorAll('[data-editmeasurement]').forEach(b=>b.onclick=()=>editMeasurementV2(b.dataset.editmeasurement));document.querySelectorAll('[data-delphoto]').forEach(b=>b.onclick=()=>deletePhotoV2(b.dataset.delphoto));document.querySelectorAll('[data-reminder-toggle]').forEach(b=>b.onchange=()=>toggleReminder(b.dataset.reminderToggle,b.checked));document.querySelectorAll('[data-delreminder]').forEach(b=>b.onclick=()=>deleteReminder(b.dataset.delreminder));$('#reminderForm')?.addEventListener('submit',saveReminder);$('#enableNotifications')?.addEventListener('click',enablePushNotifications);$('#disableNotifications')?.addEventListener('click',disablePushNotifications);$('#exportData')?.addEventListener('click',exportData);$('#aiIntakeForm')?.addEventListener('submit',generateAIPlan);$('#aiIntakeForm')?.addEventListener('input',updateAIEditPreview);$('#aiIntakeForm')?.addEventListener('change',updateAIEditPreview);document.querySelectorAll('[data-ai-generate-new]').forEach(b=>b.onclick=()=>generateFreshAIPlan(b));$('#aiRefineForm')?.addEventListener('submit',refineAIPlan);document.querySelectorAll('[data-ai-apply]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiApply));document.querySelectorAll('[data-ai-select]').forEach(b=>b.onclick=()=>{aiPlanDraft=aiPlanHistory.find(x=>x.id===b.dataset.aiSelect)||null;render()});}
@@ -439,7 +453,7 @@ async function saveSettings(e){e.preventDefault();let f=new FormData(e.currentTa
 async function logout(){_manualSignOut=true;await clearPushForCurrentUser();await supabase.auth.signOut();session=null;user=null;renderAuthV2()}
 
 /* ===== THE CUT 2.0: AI-first gating, coach/insights, tour ===== */
-async function gotoTab(t){if(!aiUnlocked&&t!=='ai'){toast('Generate your first AI plan to unlock the rest of the app.');return}tab=t;await render()}
+async function gotoTab(t){if(!aiUnlocked&&t!=='ai'&&t!=='account'){toast('Generate your first AI plan to unlock the rest of the app.');return}tab=t;await render()}
 
 async function initV2(pr){
  tab='ai';
@@ -821,9 +835,9 @@ async function saveReminder(e){e.preventDefault();const f=new FormData(e.current
 async function toggleReminder(id,enabled){try{await q(supabase.from('reminders').update({is_enabled:enabled}).eq('id',id).eq('user_id',user.id));await loadReminders();await render()}catch(e){fail(e)}}
 async function deleteReminder(id){if(!await uiConfirm('Delete?','Delete this reminder?',{confirm:'Delete',danger:true}))return;try{await q(supabase.from('reminders').delete().eq('id',id).eq('user_id',user.id));await loadReminders();await render()}catch(e){fail(e)}}
 async function exportData(){
- const tables=['user_settings','foods','meal_templates','meal_template_items','daily_targets','daily_meals','food_entries','daily_checkins','body_measurements','progress_photos','workout_sessions','workout_exercises','workout_sets','daily_activity','water_logs','grocery_items','prep_tasks','reminders','push_notification_deliveries','ai_plan_versions'];
+ const tables=['user_settings','foods','meal_templates','meal_template_items','daily_targets','daily_meals','food_entries','daily_checkins','body_measurements','progress_photos','workout_sessions','workout_exercises','workout_sets','daily_activity','water_logs','grocery_items','prep_tasks','reminders','push_notification_deliveries','ai_plan_versions','agent_insights','agent_baseline'];
  const backup={product:'THE CUT 2.0',schema_version:1,exported_at:new Date().toISOString(),user_id:user.id,data:{}};
- try{const profile=await q(supabase.from('profiles').select('*').eq('id',user.id).maybeSingle());backup.data.profiles=profile?[profile]:[];for(const table of tables){let rows=[],offset=0,batch=[];do{batch=await q(supabase.from(table).select('*').eq('user_id',user.id).range(offset,offset+999));rows=rows.concat(batch);offset+=batch.length}while(batch.length===1000);backup.data[table]=rows}const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='the-cut-backup-'+today()+'.json';document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Your JSON backup has been generated.')}catch(e){fail(e)}
+ try{const profile=await q(supabase.from('profiles').select('*').eq('id',user.id).maybeSingle());backup.data.profiles=profile?[profile]:[];for(const table of tables){let rows=[],offset=0,batch=[];do{batch=await q(supabase.from(table).select('*').eq('user_id',user.id).range(offset,offset+999));rows=rows.concat(batch);offset+=batch.length}while(batch.length===1000);backup.data[table]=rows}const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='the-cut-backup-'+today()+'.json';document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Your JSON backup has been generated.');return true}catch(e){fail(e);return false}
 }
 function renderPasswordRecovery(){
  $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>ACCOUNT RECOVERY</small></div></div><h1>Set a new password.</h1><p class="muted">Choose a new password for your account.</p><form id="recoverForm"><div class="field"><label>NEW PASSWORD</label><input name="password" type="password" minlength="8" required autocomplete="new-password"/></div><div class="field"><label>CONFIRM PASSWORD</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"/></div><button class="btn primary" style="width:100%">Update password</button><p class="muted small" id="recoverMsg"></p></form></div></div>`;
@@ -1042,6 +1056,7 @@ function wireWk(){
 
 /* ---------- wiring for the v3 pages ---------- */
 function wireV3(){
+ wireAccount();
  document.querySelectorAll('[data-wkstart]').forEach(b=>b.onclick=()=>wkBegin(b.dataset.wkstart));
  document.querySelectorAll('[data-prepview]').forEach(b=>b.onclick=()=>{prepView=b.dataset.prepview;render()});
  document.querySelectorAll('[data-delweight]').forEach(b=>b.onclick=()=>deleteRow('body_measurements',b.dataset.delweight,'weight'));
@@ -1119,6 +1134,83 @@ window.addEventListener('unhandledrejection',ev=>{const r=ev.reason;if(r&&/Abort
 /* accessibility: tie every .field label to its control */
 (function a11yLabels(){let n=0;const link=()=>{document.querySelectorAll('.field').forEach(f=>{const l=f.querySelector('label'),c=f.querySelector('input,select,textarea');if(!l||!c||l.htmlFor)return;if(!c.id)c.id='fld'+(++n);l.htmlFor=c.id;if(!c.getAttribute('aria-label')&&!c.placeholder)c.setAttribute('aria-label',l.textContent.trim())})};new MutationObserver(link).observe(document.getElementById('root'),{childList:true,subtree:true});link()})();
 /* session expiry: unexpected sign-out while the app is open */
+
+
+/* ================= v5: Account page, avatar menu, delete account ================= */
+function accountV3(){
+ const name=user.user_metadata?.name||'';const since=user.created_at?dateFmt(user.created_at.slice(0,10),{day:'numeric',month:'short',year:'numeric'}):'—';
+ return `${pageHead('PROFILE · DATA · SECURITY','Account','Your details, your data and your account controls.')}
+ <div class="grid g2">
+ ${card('Profile',`<div class="acct-id"><div class="acct-av" aria-hidden="true">${esc((name||user.email||'U').slice(0,1).toUpperCase())}</div><div class="grow"><strong>${esc(name||'No name set')}</strong><small>${esc(user.email)}</small></div><button class="btn sm" type="button" id="acctChangeEmail">Change email</button></div>
+ <form id="acctForm" style="margin-top:16px"><div class="field"><label>DISPLAY NAME</label><input name="name" value="${esc(name)}" maxlength="60" placeholder="Your name" autocomplete="name"/></div><button class="btn primary" type="submit">Save name</button></form>
+ <div class="acct-meta"><div><small>MEMBER SINCE</small><b>${since}</b></div><div><small>CURRENT PLAN</small><b>${aiActivePlan?esc(aiActivePlan.title||'Active plan'):'No plan applied'}</b></div></div>`)}
+ ${card('Data & security',`<p class="muted small" style="margin-top:0">Your data is private to this account. Download a full copy any time.</p>
+ <div class="acct-actions"><button class="btn" id="acctExport">Download my data (JSON)</button><button class="btn" id="acctReset">Email me a password reset link</button><button class="btn" id="acctSignout">Sign out</button></div>`)}
+ </div>
+ <div style="margin-top:16px"><section class="card danger-zone"><div class="section-title"><h2>Danger zone</h2></div><p class="muted" style="margin-top:0">Deleting your account permanently erases your plans, meals, workouts, weight history, photos and coach data. This cannot be undone.</p><button class="btn danger" id="acctDelete">Delete account</button></section></div>`;
+}
+function closeAcctMenu(){document.getElementById('acctMenu')?.remove();document.removeEventListener('click',_acctOutside,true);document.removeEventListener('keydown',_acctEsc,true)}
+function _acctOutside(e){if(!e.target.closest('#acctMenu,#acctBtn'))closeAcctMenu()}
+function _acctEsc(e){if(e.key==='Escape'){closeAcctMenu();$('#acctBtn')?.focus()}}
+function openAcctMenu(){
+ if(document.getElementById('acctMenu')){closeAcctMenu();return}
+ const b=$('#acctBtn'),r=b.getBoundingClientRect(),m=document.createElement('div');m.id='acctMenu';m.setAttribute('role','menu');
+ m.style.cssText='top:'+(r.bottom+8)+'px;right:'+Math.max(8,window.innerWidth-r.right)+'px';
+ m.innerHTML=`<div class="am-head"><b>${esc(user.user_metadata?.name||'Your account')}</b><small>${esc(user.email)}</small></div><button role="menuitem" data-am="account">Account &amp; settings</button><button role="menuitem" data-am="export">Download my data</button><button role="menuitem" data-am="signout">Sign out</button><button role="menuitem" class="am-danger" data-am="delete">Delete account…</button>`;
+ document.body.appendChild(m);b.setAttribute('aria-expanded','true');
+ m.querySelectorAll('[data-am]').forEach(x=>x.onclick=async()=>{const a=x.dataset.am;closeAcctMenu();if(a==='account')await gotoTab('account');else if(a==='export')exportData();else if(a==='signout')logout();else if(a==='delete')deleteAccountFlow()});
+ setTimeout(()=>{document.addEventListener('click',_acctOutside,true);document.addEventListener('keydown',_acctEsc,true)},0);
+ m.querySelector('button').focus();
+}
+function wireAccount(){
+ const b=$('#acctBtn');if(b)b.onclick=openAcctMenu;
+ $('#acctForm')?.addEventListener('submit',async e=>{e.preventDefault();const name=String(new FormData(e.currentTarget).get('name')||'').trim();try{const {data,error}=await supabase.auth.updateUser({data:{name}});if(error)throw error;user=data.user;await q(supabase.from('profiles').update({display_name:name||null}).eq('id',user.id));toast('Name saved');await render()}catch(err){fail(err)}});
+ $('#acctChangeEmail')?.addEventListener('click',changeEmailFlow);
+ $('#acctExport')?.addEventListener('click',()=>exportData());
+ $('#acctSignout')?.addEventListener('click',()=>logout());
+ $('#acctReset')?.addEventListener('click',()=>authForgotSignedIn());
+ $('#acctDelete')?.addEventListener('click',()=>deleteAccountFlow());
+}
+function changeEmailFlow(){
+ document.getElementById('emModal')?.remove();const opener=document.activeElement;
+ const m=document.createElement('div');m.className='modal-bg';m.id='emModal';
+ m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="emT" style="text-align:left"><h2 id="emT" style="text-align:center">Change email</h2><p class="muted" style="text-align:center">Currently <b>${esc(user.email)}</b>. We will send a confirmation link to both your old and new address. The change applies once you confirm.</p><form id="emForm"><div class="field"><label for="emNew">NEW EMAIL</label><input id="emNew" type="email" required autocomplete="email" placeholder="you@example.com"/></div><p class="muted small" id="emMsg" role="status"></p><div class="modal-actions"><button class="btn primary" type="submit" id="emGo">Send confirmation</button><button class="btn ghost" type="button" id="emCancel">Cancel</button></div></form></div>`;
+ document.body.appendChild(m);const close=()=>{m.remove();document.removeEventListener('keydown',onKey,true);try{opener?.focus?.()}catch(_){}};
+ const onKey=e=>{if(e.key==='Escape'){e.stopPropagation();close()}};document.addEventListener('keydown',onKey,true);
+ $('#emCancel').onclick=close;$('#emNew').focus();
+ $('#emForm').onsubmit=async e=>{e.preventDefault();const v=$('#emNew').value.trim().toLowerCase();if(v===String(user.email).toLowerCase()){$('#emMsg').textContent='That is already your email.';return}
+  const b=$('#emGo');b.disabled=true;b.textContent='Sending…';
+  try{const {error}=await supabase.auth.updateUser({email:v},{emailRedirectTo:location.origin});if(error)throw error;close();uiModal({icon:'✉',title:'Check both inboxes',body:'We sent confirmation links to <b>'+esc(user.email)+'</b> and <b>'+esc(v)+'</b>. Open both to finish the change. Until then you keep signing in with your current email.',tone:'ok',actions:[{label:'Got it',primary:true}]})}
+  catch(err){b.disabled=false;b.textContent='Send confirmation';const f=friendlyError(err);$('#emMsg').textContent=f.title+'. '+f.body.replace(/<[^>]+>/g,'')}};
+}
+async function authForgotSignedIn(){try{const {error}=await supabase.auth.resetPasswordForEmail(user.email,{redirectTo:location.origin});if(error)throw error;uiModal({icon:'✉',title:'Check your email',body:'We sent a password reset link to <b>'+esc(user.email)+'</b>.',tone:'ok',actions:[{label:'Got it',primary:true}]})}catch(e){fail(e)}}
+function deleteAccountFlow(){
+ document.getElementById('delModal')?.remove();const opener=document.activeElement;
+ const m=document.createElement('div');m.className='modal-bg';m.id='delModal';
+ m.innerHTML=`<div class="modal tone-error" role="alertdialog" aria-modal="true" aria-labelledby="delT" aria-describedby="delB" style="text-align:left"><div class="mail-ico ico-error" aria-hidden="true">!</div><h2 id="delT" style="text-align:center">Delete your account?</h2>
+ <div id="delB"><p class="muted">This permanently erases everything tied to <b>${esc(user.email)}</b>:</p><ul class="del-list"><li>Your plan, meals, workouts and weight history</li><li>Progress photos and coach insights</li><li>Your login. You will be signed out for good</li></ul><p class="muted"><b>This cannot be undone.</b></p></div>
+ <button class="btn" id="delExport" type="button" style="width:100%">Download my data first</button>
+ <div class="field" style="margin-top:14px"><label for="delConfirm">Type <b>DELETE</b> to confirm</label><input id="delConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="DELETE"/></div>
+ <p class="muted small" id="delMsg" role="status"></p>
+ <div class="modal-actions"><button class="btn danger" id="delGo" type="button" disabled>Delete my account forever</button><button class="btn ghost" id="delCancel" type="button">Cancel</button></div></div>`;
+ document.body.appendChild(m);
+ const inp=$('#delConfirm'),go=$('#delGo'),msg=t=>{$('#delMsg').textContent=t};let busy=false;
+ const close=()=>{if(busy)return;m.remove();document.removeEventListener('keydown',onKey,true);try{opener?.focus?.()}catch(_){}};
+ const onKey=e=>{if(e.key==='Escape'){e.stopPropagation();close()}if(e.key==='Tab'){const f=[...m.querySelectorAll('button:not([disabled]),input')];const a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus()}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}}};
+ document.addEventListener('keydown',onKey,true);
+ inp.oninput=()=>{go.disabled=busy||inp.value.trim()!=='DELETE'};
+ $('#delCancel').onclick=close;
+ $('#delExport').onclick=async()=>{const b=$('#delExport');b.disabled=true;b.textContent='Preparing…';const ok=await exportData();b.disabled=false;b.textContent=ok?'Downloaded. Download again':'Download my data first'};
+ go.onclick=async()=>{if(inp.value.trim()!=='DELETE'||busy)return;busy=true;go.disabled=true;$('#delCancel').disabled=true;go.textContent='Deleting…';msg('Erasing your data. Keep this window open.');
+  try{try{await clearPushForCurrentUser()}catch(_){}
+   const {data,error}=await supabase.functions.invoke('delete-account',{body:{confirm:'DELETE'}});if(error)throw error;if(data&&data.error)throw new Error(data.error);
+   const uid=user.id;_manualSignOut=true;try{await supabase.auth.signOut({scope:'local'})}catch(_){}
+   try{Object.keys(localStorage).filter(k=>k.startsWith('cut_')&&k.includes(uid)).forEach(k=>localStorage.removeItem(k))}catch(_){}
+   busy=false;m.remove();document.removeEventListener('keydown',onKey,true);session=null;user=null;wk=null;wkHist=null;aiActivePlan=null;unsubscribeInsights();renderAuthV2();
+   uiModal({icon:'✓',title:'Account deleted',body:'Your account and all its data have been permanently erased.',tone:'ok',actions:[{label:'Done',primary:true}]})}
+  catch(err){busy=false;go.disabled=false;$('#delCancel').disabled=false;go.textContent='Delete my account forever';let em=err?.message||'';try{if(err?.context?.json){const j=await err.context.json();em=j.error||em}}catch(_){}msg('');uiModal({title:'Could not delete account',body:esc(em||'Something went wrong. Nothing was deleted if you are still signed in. Please try again.'),id:'delErr',actions:[{label:'OK',primary:true}]})}};
+ inp.focus();
+}
 
 const {data:{session:initial}}=await supabase.auth.getSession();session=initial;if(session&&!recoveryMode)await bootstrap();else if(!recoveryMode)renderAuthV2();
 
