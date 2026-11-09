@@ -4,9 +4,9 @@
 |---|---|
 | **Product** | THE CUT 2.0 — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Date** | 2026-11-10 |
-| **Baseline** | `main` @ `f8db945` (mobile layout, input-only Plan page, plan feedback; previous baseline `81677d8`); production: https://the-cut-tracker.vercel.app |
+| **Baseline** | `main` @ `b5c1e86` (dynamic workouts: per-exercise feedback and AI session review; previous baselines `f8db945`, `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
 | **Status** | Living document. Update the status column in the same pull request that changes behaviour. |
 
@@ -84,13 +84,13 @@ Legacy tab names (`overview`, `nutrition`, `habits`, `training`, `progress`, `pl
 | Web app (`index.html`, `app.js`, `styles.css`, `lib/`, `manifest.webmanifest`, `icons/`, `sw.js`, favicons) | production on `main` | — | yes |
 | Throwaway test users `rls-test-a@thecut.invalid`, `rls-test-b@thecut.invalid` | exist in production Auth (used by API/e2e tests) | password sign-in | no (database only) |
 | `src/vercel.json` (security headers, CSP, cache rules) | production | — | yes |
-| Edge function `the-cut-ai` | v52, ACTIVE | `verify_jwt` true | yes |
+| Edge function `the-cut-ai` | v53, ACTIVE (adds `workout.ts`) | `verify_jwt` true | yes |
 | Edge function `delete-account` | v1, ACTIVE | `verify_jwt` true (service role inside) | yes |
 | Edge function `the-cut-push-dispatch` | v41, ACTIVE | `verify_jwt` false; guarded by a secret header | **no** (deployed only) |
 | Edge functions `the-cut-auth-smoke-qa`, `the-cut-ai-smoke-qa`, `cut-test-provision` | ACTIVE stubs from QA | `verify_jwt` false | **no** — pending deletion (OI-04) |
 | `pg_cron` job `the-cut-push-dispatch` | every minute | — | no (database only) |
 | Storage bucket `progress-photos` | private | RLS on `storage.objects` | no (database only) |
-| Migrations `20261108_agent_layer.sql`, `20261109_coach_sync.sql` | applied | — | yes |
+| Migrations `20261108_agent_layer.sql`, `20261109_coach_sync.sql`, `20261110_workout_feedback.sql` | applied | — | yes |
 
 ### 3.3 Environment configuration
 
@@ -153,12 +153,13 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | PLAN-21 | Generation/refine shows progress that survives tab changes: shimmering button and a floating status pill with rotating messages; the user stays on the tab they moved to | P2 | Done | FE `setAIProgress`, `#aiProg` |
 | PLAN-22 | Plan page is input only: status card (active plan, draft waiting, undo), collapsed "Your details" with Edit, compact refine box | P1 | Done | FE `aiPlannerPage`, `aiPlanStatusCard`, `foldCard` |
 | PLAN-23 | Generate and Refine apply the plan immediately (no review step); Undo toast (9 s) restores the previous plan | P1 | Done | FE `saveAIDraft` → `applyAIPlan({auto:true})`, `toastUndo` |
+| PLAN-24 | The Refine box keeps its text and its running state when the user switches tabs, switches apps on a phone or reloads: the text is never lost, a running request repaints as busy, and after a reload an interrupted request shows a note instead of an empty box | P1 | Done | FE `rf`, `rfEnsure`, `rfPaint`, `rfBusy`, `runAIPlanRequest`; storage key `cut_refine_<uid>` (cleared on logout) |
 
 ### 4.3 AI service (AISVC)
 
 | ID | Requirement | Pri | Status | Evidence |
 |---|---|---|---|---|
-| AISVC-01 | A single JWT-protected endpoint serves all AI actions: `generate`, `refine`, `review`, `assess`, `chat`; unknown actions return 400 | P0 | Done | EF `the-cut-ai` (`verify_jwt` true) |
+| AISVC-01 | A single JWT-protected endpoint serves all AI actions: `generate`, `refine`, `review`, `assess`, `chat`, `workout_review`; unknown actions return 400 | P0 | Done | EF `the-cut-ai` (`verify_jwt` true) |
 | AISVC-02 | The provider is swappable by secrets only (any OpenAI-compatible endpoint) | P1 | Done | EF `llm.ts`; `docs/ARCHITECTURE.md` |
 | AISVC-03 | AWS Bedrock is supported without an API key through SigV4 request signing | P1 | Done | EF `llm.ts` (`AwsClient`, service `bedrock`) |
 | AISVC-04 | Optional fallback provider is tried after the primary fails | P2 | Done | EF `llm.ts` (`LLM_FALLBACK_*`) |
@@ -226,7 +227,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | WORK-15 | Weekly training plan can be edited as text (`Day | Focus | minutes | exercises`) and saved; the change is reviewed by the coach | P1 | Done | FE `trainingWeekEditor`, `saveTrainingWeek`; DB RPC `save_training_week` |
 | WORK-16 | Edit an already-saved session (title, duration, exercises) | P2 | Partial | FE `editWorkoutV2` exists; entry point only on legacy `training` tab (KL-03); uses `prompt()` |
 | WORK-17 | After saving a workout, a popup walks through each exercise with quick feedback: too easy / just right / too hard, issue chips (joint or muscle pain, form, missed reps, tired, equipment, time, dislike) and an optional note. Every step is skippable, and unfinished feedback survives a reload (24 h) | P1 | Done | FE `fbStart`, `fbRender`, `fbResume` (`cut_wkfb_<uid>`); DB `workout_feedback` |
-| WORK-18 | The finished session, feedback, recent history of the same lifts and the live training week go to the AI (`workout_review`), which explains how the session went, lists issues and proposes a revised week | P1 | Done | EF `workoutReview`; `workout.ts` |
+| WORK-18 | The finished session, feedback, recent history of the same lifts and the live training week go to the AI (`workout_review`), which explains how the session went, lists issues and proposes a revised week | P1 | Done | EF `workoutReview`; `workout.ts` (prompt version `the-cut-workout-v1`) |
 | WORK-19 | The revised week is validated server-side (same days and order, rest days untouched, session length within 30%, 1–10 exercises, at most 8 sets) and then auto-applied to the active plan's training week; the user sees the exact differences and can Undo while the week is unchanged | P1 | Done | EF `normalizeWeek`; FE `applyWorkoutReview`, `undoWorkoutReview`; DB `workout_reviews`, `save_training_week` |
 | WORK-20 | AI load targets in plan exercise strings (`Bench Press 3x8 @ 62.5 kg`) pre-fill the sets and show as the coach target; plan reps win over last time's reps | P2 | Done | FE `planTargetKg`, `wkMakeEx` |
 
@@ -261,7 +262,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | ACCT-02a | Display name can be edited and saved | P2 | Done | FE `accountV3` (`#acctForm`) |
 | ACCT-03 | Change email: new address is entered and a confirmation is sent (secure email change: both addresses confirm) | P1 | Done | FE `changeEmailFlow`; Auth "Secure email change" ON |
 | ACCT-04 | Change password: sends a reset link to the signed-in user's email | P1 | Done | FE `authForgotSignedIn` |
-| ACCT-05 | Export my data as a JSON file covering profile and 22 user tables (settings, foods, meal templates and items, targets, daily meals, food entries, check-ins, measurements, photo records, workouts/exercises/sets, activity, water, groceries, prep, reminders, push deliveries, AI plan versions, coach insights and baseline) | P1 | Done | FE `exportData` |
+| ACCT-05 | Export my data as a JSON file covering profile and 24 user tables (settings, foods, meal templates and items, targets, daily meals, food entries, check-ins, measurements, photo records, workouts/exercises/sets, workout feedback and AI session reviews, activity, water, groceries, prep, reminders, push deliveries, AI plan versions, coach insights and baseline) | P1 | Done | FE `exportData` |
 | ACCT-06 | Delete account: dialog requires typing `DELETE`, offers "Download my data first", then wipes the account | P0 | Done | FE `deleteAccountFlow` |
 | ACCT-07 | Deletion removes all stored progress-photo files and the auth user; every table row is removed by `ON DELETE CASCADE` from `auth.users` | P0 | Done | EF `delete-account` v1; DB foreign keys; wipe verified with a throwaway user |
 | ACCT-08 | The deletion endpoint accepts only the caller's own valid JWT and a body of `{confirm:"DELETE"}` | P0 | Done | EF `delete-account` |
@@ -314,8 +315,8 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 | ID | Requirement | Pri | Status | Evidence |
 |---|---|---|---|---|
-| QA-01 | Unit tests for pure logic and plan validation (25 tests, all passing) | P1 | Done | `tests/unit/*.test.mjs`; `npm run test:unit` |
-| QA-02 | API/RLS tests: cross-user read/update/delete/insert/reassign blocked, anon sees nothing, plan RPC and storage isolated, edge functions reject bad calls (63 tests) | P1 | Partial | `tests/api/`; expected results confirmed manually against production; the suite itself could not be run from the workspace (no network) (OI-13) |
+| QA-01 | Unit tests for pure logic, plan validation and workout-review validation (36 tests, all passing) | P1 | Done | `tests/unit/*.test.mjs`; `npm run test:unit` |
+| QA-02 | API/RLS tests: cross-user read/update/delete/insert/reassign blocked, anon sees nothing, plan RPC and storage isolated, edge functions reject bad calls; includes `workout_feedback` and `workout_reviews` (67 tests collected) | P1 | Partial | `tests/api/`; expected results confirmed manually against production; the suite itself could not be run from the workspace (no network) (OI-13) |
 | QA-03 | Browser smoke tests (assets, headers, sign-in error dialog, plan gate, Account page, delete-dialog guard, sign-out) | P1 | Partial | `tests/e2e/`; Chrome launch and asset test pass locally, flows verified manually in a browser (OI-13) |
 | QA-04 | CI workflow runs lint, typecheck, unit, API and e2e | P1 | Skipped | Removed: GitHub Actions needs a billing method. Run `npm run check` locally |
 | QA-05 | Lint (`no-undef`, redeclare, unreachable) over `src/` and strict JSDoc typecheck over `src/lib/` | P2 | Done | `eslint.config.mjs`, `jsconfig.json`; `npm run check` |
@@ -329,7 +330,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 | ID | Requirement | Pri | Status | Evidence |
 |---|---|---|---|---|
-| SEC-01 | Row-level security enabled on all 24 public tables; users can only read/write their own rows (33 policies) | P0 | Done | DB `pg_policies`, `relrowsecurity` |
+| SEC-01 | Row-level security enabled on all 26 public tables; users can only read/write their own rows (40 policies) | P0 | Done | DB `pg_policies`, `relrowsecurity` |
 | SEC-02 | Progress-photo bucket is private; storage policies limit read/insert/update/delete to the owner | P0 | Done | DB `storage.buckets`, `progress_photos_*_own` |
 | SEC-03 | Frontend holds only the publishable Supabase key; service-role key exists only inside edge functions | P0 | Done | Vercel env; EF `delete-account` |
 | SEC-04 | AI and delete-account endpoints require a valid JWT | P0 | Done | `verify_jwt` true on both |
@@ -413,6 +414,8 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 - **Given** an active plan, **when** I change my profile or type an instruction and submit, **then** a new draft is created and the active plan is unchanged until I apply it.
 - **Given** a refinement, **then** calories stay within 20% of my accepted plan unless my instruction clearly requires more, and never below 1,200 kcal.
 
+- **Given** I type a refinement and switch to another tab or app while it runs, **when** I return, **then** my text is still there and the box shows it is still working (PLAN-24).
+
 ### US-06 Track my day (MEAL-01…06)
 - **Given** an active plan, **when** I open Meals, **then** I see today's meals with times and components.
 - **When** I tick a meal, **then** it shows complete and the calories/protein bars update.
@@ -442,18 +445,26 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 ### US-11 Change email (ACCT-03)
 - **When** I submit a new email on Account, **then** confirmation is requested and my sign-in email does not change until it is confirmed.
 
+### US-12 Get my plan adjusted from a workout (WORK-17…20)
+- **Given** I saved a workout, **then** a popup asks about each exercise (too easy / just right / too hard, issue chips, optional note) and I can skip any step.
+- **Given** I reload before finishing the popup, **then** my unfinished feedback is restored (within 24 hours).
+- **When** the review finishes, **then** I see how the session went, the issues found and the exact changes to my training week, already applied, with Undo.
+- **Given** I report joint pain on a lift, **then** the review swaps or reduces it rather than progressing it.
+- **Given** the AI proposes a week that breaks the rules (different days, rest days changed, session length beyond 30%, more than 8 sets), **then** it is rejected, my plan is unchanged and I still get the analysis.
+- **When** I press Undo while my training week is unchanged, **then** the previous week is restored.
+
 ---
 
 ## 7. Data model
 
-### 7.1 Tables (24, all with RLS and `ON DELETE CASCADE` to `auth.users`)
+### 7.1 Tables (26, all with RLS and `ON DELETE CASCADE` to `auth.users`)
 
 | Group | Tables |
 |---|---|
 | Identity & settings | `profiles`, `user_settings` |
 | Plans | `ai_plan_versions`, `daily_targets` |
 | Meals | `meal_templates`, `meal_template_items`, `daily_meals`, `food_entries`, `foods` |
-| Training | `workout_sessions`, `workout_exercises`, `workout_sets` |
+| Training | `workout_sessions`, `workout_exercises`, `workout_sets`, `workout_feedback` (per-exercise rating, issue tags, note), `workout_reviews` (AI analysis plus exact before/after training week, for Undo) |
 | Body | `body_measurements`, `progress_photos` |
 | Habits | `water_logs`, `daily_checkins`, `daily_activity` |
 | Shopping & prep | `grocery_items`, `prep_tasks` |
@@ -514,6 +525,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | Mobile UI (`262418a`) | Consolidated mobile CSS; input-only Plan page; auto-apply with undo; plan history in Account |
 | Top bar title (`57a8b35`) | Logo mark and page title on non-date tabs |
 | Plan feedback (`f8db945`) | What-changed card, global AI progress pill, bell dropdown, button spacing |
+| Dynamic workouts (`b5c1e86`) | Per-exercise feedback popup, AI session review (`workout_review`, `workout.ts`), auto-applied training-week changes with Undo, Refine box persistence; migration `20261110_workout_feedback` |
 
 ---
 
@@ -538,6 +550,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | OI-15 | Try Install app on a physical Android phone | Manual test | P2 |
 | OI-16 | `app.js` is still one 160 KB module with shared mutable state; splitting page modules needs a shared `state` object first | Code change | P2 |
 | OI-17 | Remove inline `style=` attributes (92) so CSP `style-src` can drop `'unsafe-inline'` | Code change | P2 |
+| OI-18 | Verify `workout_review` against the real LLM and the feedback popup, Undo and Refine-box persistence in a signed-in browser (shipped with DB, RLS and unit-level checks only; the build sandbox cannot reach Supabase) | Manual test | P1 |
 
 ## 11. Skipped items (paid plan or manual action)
 
@@ -574,6 +587,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | KL-10 | `app.js` still uses monkey-patched function overrides (e.g. `saveSettings=saveSettingsV2`); the strict typecheck therefore covers only `src/lib/`. |
 | KL-11 | Undo restores targets and meal templates of the previous plan, but grocery and prep items the newer plan added are not removed. |
 | KL-12 | Auto-applied plans skip the old review step; safety concerns now surface through the Coach (and the AI's own summary on the What-changed card). |
+| KL-13 | Workout reviews change the recurring weekly training week of the active plan, not a dated calendar; Undo is offered only while that week is unchanged since the review. |
 | KL-08 | Nutrition and training output are AI estimates, not medical advice. |
 | KL-09 | The coach rules depend on data (water, check-ins) that has no reachable logging screen (KL-03), so those rules fire only on existing or imported data. |
 
@@ -586,3 +600,4 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | 1.0 | 2026-11-10 | Initial requirements register built from `main` @ `81677d8` |
 | 1.1 | 2026-11-10 | Added PWA and QA modules; asset split and CSP change; corrected PUSH-05 and UX-12; closed OI-09; new open items OI-13 to OI-17 |
 | 1.2 | 2026-11-10 | Mobile layout and top bar; input-only Plan page with auto-apply/undo (PLAN-11, 12, 13, 16 revised; PLAN-20 to 23 added); bell dropdown (COACH-05); UX-16/17; CI workflow removed (QA-04 Skipped); KL-11/12 |
+| 1.3 | 2026-11-10 | Dynamic workouts: WORK-17 to 20 and US-12; PLAN-24 (Refine box persistence); `workout_review` action (AISVC-01); tables 24 → 26 and policies 33 → 40 (SEC-01, 7.1); export covers 24 tables; edge function v53; QA counts (36 unit, 67 API); OI-18, KL-13 |
