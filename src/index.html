@@ -171,7 +171,18 @@ img,svg,canvas{max-width:100%}.table{display:block;max-width:100%;overflow-x:aut
 .rpe{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:8px 0}
 @media(max-width:860px){.wk-top{flex-wrap:wrap;gap:8px}.wk-top>.grow{flex:1 1 100%;min-width:0}.wk-top>.row{width:100%}.wk-top>.row .btn{flex:1}.mobilebar{overflow-x:hidden!important}.mobilebar button{flex:1 1 0!important;min-width:0!important;padding:6px 2px!important;font-size:10px!important;white-space:nowrap}.mobilebar button span{font-size:16px}}
 @media(max-width:860px){.wk-restbar{bottom:calc(84px + env(safe-area-inset-bottom))}.wk{padding-bottom:170px}.wk-top{top:0}}
-</style></head>
+</style><style>
+.modal-actions{display:flex;flex-direction:column;gap:8px;margin-top:18px}.modal-actions .btn{width:100%;min-height:46px}
+.modal .ico-error{background:#ff7e7322;color:var(--red)}.modal .ico-ok{background:#c8f16922;color:var(--lime)}.modal .ico-info{background:#8fc8e922;color:var(--blue)}
+.modal .mail-ico{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;margin:0 auto 6px;font-size:24px;font-weight:700}
+.modal.tone-error{border-color:#ff7e7355}
+.toast.err{background:#3a1a17;border:1px solid var(--red);color:#ffd9d5}
+#offlineBar{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--orange);color:#1a1205;text-align:center;font-weight:700;font-size:13px;padding:8px 12px}
+.pw{position:relative}.pw input{padding-right:70px}.pwtoggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--lime);font-weight:700;font-size:12px;padding:10px;cursor:pointer;min-height:40px}
+@media (max-width:860px){input,select,textarea{font-size:16px!important}.btn{min-height:44px}}
+</style>
+
+</head>
 <body>
 <div id="root"><div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><div class="muted">Connecting securely…</div><span class="loader"></span></div></div></div>
 <div id="toast" class="toast hidden"></div>
@@ -202,8 +213,7 @@ const PREP=['Boil eggs for the next few days · 5 whole + 2 whites/day','Marinat
 let user=null,session=null,settings={calorie_target:1566,protein_target_g:139,carbs_target_g:105.3,fat_target_g:64.4,water_target_ml:2500},date=today(),tab='overview',day={meals:[],entries:[],checkin:null,activity:null,water:[],prep:[]},templates=[],foods=[],groceries=[],workouts=[],measurements=[],photos=[],toastTimer;
 let templateHistory=[],aiPlanHistory=[],aiPlanDraft=null,aiActivePlan=null,aiBusy=false;
 let aiUnlocked=false,insights=[],insightsEnabled=true,insightChannel=null,tourState=null,coachReview=null;
-function toast(msg){let t=$('#toast');t.textContent=msg;t.classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.add('hidden'),3200)}
-function fail(e){console.error(e);toast(e?.message||'Something went wrong. Please retry.')}
+let _modalOpener=null,_manualSignOut=false;
 async function q(p){let {data,error}=await p;if(error)throw error;return data}
 async function bootstrap(){user=session.user; if(!user){renderAuthV2();return} $('#root').innerHTML='<div class="authwrap"><div class="authcard"><span class="loader"></span> Loading your workspace…</div></div>';
 try{
@@ -236,7 +246,7 @@ function totals(){let x=mealPlanTotals();return {k:x.k+day.entries.reduce((s,e)=
 function target(){return day.target||settings}
 async function changeDate(d){if(!d||d>today())return;date=d;await loadDay();if(tab==='settings')await loadReminders();render()}
 async function toggleMeal(m){let status=m.status==='completed'?'planned':'completed';await q(supabase.from('daily_meals').update({status,completed_at:status==='completed'?new Date().toISOString():null}).eq('id',m.id).eq('user_id',user.id));await loadDay();render()}
-function renderAuth(){ $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><h1>Own the process.</h1><p class="muted">Your nutrition, training and progress. One private workspace.</p><div class="authswitch"><button class="btn primary" id="modeIn">Sign in</button><button class="btn" id="modeUp">Create account</button></div><form id="authForm"><div id="nameField" class="field hidden"><label>YOUR NAME</label><input name="name" autocomplete="name" placeholder="Name"/></div><div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"/></div><div class="field"><label>PASSWORD</label><input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"/></div><button class="btn primary" style="width:100%;margin-top:8px" type="submit">Sign in</button><p class="muted small" id="authMsg">Your account is secured with Supabase authentication.</p></form><p class="muted small">Your private tracking data is protected by per-account database policies.</p></div></div>`;
+function renderAuth(){ $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><h1>Own the process.</h1><p class="muted">Your nutrition, training and progress. One private workspace.</p><div class="authswitch"><button class="btn primary" id="modeIn">Sign in</button><button class="btn" id="modeUp">Create account</button></div><form id="authForm"><div id="nameField" class="field hidden"><label>YOUR NAME</label><input name="name" autocomplete="name" placeholder="Name"/></div><div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"/></div><div class="field"><label>PASSWORD</label><input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"/></div><button class="btn primary" style="width:100%;margin-top:8px" type="submit">Sign in</button><p class="muted small" id="authMsg" role="status" aria-live="polite">Your account is secured with Supabase authentication.</p></form><p class="muted small">Your private tracking data is protected by per-account database policies.</p></div></div>`;
 let mode='in';const setMode=m=>{mode=m;$('#modeIn').classList.toggle('primary',m==='in');$('#modeUp').classList.toggle('primary',m==='up');$('#nameField').classList.toggle('hidden',m==='in');$('#authForm button[type=submit]').textContent=m==='in'?'Sign in':'Create account';$('#authMsg').textContent=m==='in'?'Use your account email and password.':'We may send a verification link to your email.'};$('#modeIn').onclick=()=>setMode('in');$('#modeUp').onclick=()=>setMode('up');$('#authForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.currentTarget),email=f.get('email'),password=f.get('password');let b=e.currentTarget.querySelector('button');b.disabled=true;b.textContent='Please wait…';try{if(mode==='up'){let {data,error}=await supabase.auth.signUp({email,password,options:{data:{name:f.get('name')},emailRedirectTo:location.origin}});if(error)throw error;if(data.session){session=data.session;await bootstrap()}else{$('#authMsg').textContent='';showVerifyModal(email,password)}}else{let {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;session=data.session;await bootstrap()}}catch(err){$('#authMsg').textContent=err.message}finally{b.disabled=false;b.textContent=mode==='in'?'Sign in':'Create account'}}}
 const NAV_ITEMS=[['ai','✦','Plan','Plan'],['meals','◉','Meals','Meals'],['workout','↗','Workout','Workout'],['weight','▤','Weight','Weight'],['coach','◈','Coach','Coach'],['prep','▣','Prep & Grocery','Prep']];
 const LEGACY_TABS={overview:'ai',nutrition:'meals',habits:'meals',training:'workout',progress:'weight',planning:'prep',analytics:'ai',settings:'ai'};
@@ -365,7 +375,7 @@ async function refineAIPlan(e){
 async function applyAIPlan(id){
  const record=aiPlanHistory.find(x=>x.id===id);
  if(!record||record.status==='active')return;
- if(!confirm('Apply this AI plan? Active meal templates will be archived, targets updated, and missing grocery/prep items added. Completed and historical meal logs will be retained.'))return;
+ if(!await uiConfirm('Apply this plan?','Active meal templates will be archived, targets updated, and missing grocery/prep items added. Completed and historical meal logs are kept.',{confirm:'Apply plan'}))return;
  try{
   const result=await q(supabase.rpc('apply_ai_plan_version',{p_version_id:id,p_local_date:date,p_week_start:weekStart(date)}));
   await ensureTemplates();await ensureDay(date);await loadDay();
@@ -426,7 +436,7 @@ async function addPrep(e){e.preventDefault();let f=new FormData(e.currentTarget)
 async function updatePrep(id,checked){await q(supabase.from('prep_tasks').update({is_completed:checked,completed_at:checked?new Date().toISOString():null}).eq('id',id).eq('user_id',user.id));await after()}
 async function deleteRow(table,id,tabName){if(!confirm('Delete this record?'))return;try{await q(supabase.from(table).delete().eq('id',id).eq('user_id',user.id));await render()}catch(e){fail(e)}}
 async function saveSettings(e){e.preventDefault();let f=new FormData(e.currentTarget),o={user_id:user.id};['calorie_target','protein_target_g','carbs_target_g','fat_target_g','fiber_target_g','water_target_ml'].forEach(k=>{let v=f.get(k);o[k]=v===''?null:Number(v)});try{await q(supabase.from('user_settings').upsert(o,{onConflict:'user_id'}));settings={...settings,...o};toast('Targets updated');await after()}catch(e){fail(e)}}
-async function logout(){await clearPushForCurrentUser();await supabase.auth.signOut();session=null;user=null;renderAuthV2()}
+async function logout(){_manualSignOut=true;await clearPushForCurrentUser();await supabase.auth.signOut();session=null;user=null;renderAuthV2()}
 
 /* ===== THE CUT 2.0: AI-first gating, coach/insights, tour ===== */
 async function gotoTab(t){if(!aiUnlocked&&t!=='ai'){toast('Generate your first AI plan to unlock the rest of the app.');return}tab=t;await render()}
@@ -625,7 +635,7 @@ function wireV2(){
  applyAIPlan=hook(applyAIPlan,ackState);
 }
 
-supabase.auth.onAuthStateChange((event,s)=>{session=s;if(event==='SIGNED_IN'&&!user&&s&&document.getElementById('verifyModal')){session=s;document.getElementById('verifyModal').remove();bootstrap()}if(event==='SIGNED_OUT'){user=null;wk=null;wkHist=null;aiActivePlan=null;unsubscribeInsights();aiUnlocked=false;insights=[];tourState=null;coachReview=null;if(reminderTimer)clearInterval(reminderTimer);renderAuthV2()}if(event==='PASSWORD_RECOVERY'){recoveryMode=true;renderPasswordRecovery()}});
+supabase.auth.onAuthStateChange((event,s)=>{session=s;if(event==='SIGNED_IN'&&!user&&s&&document.getElementById('verifyModal')){session=s;document.getElementById('verifyModal').remove();bootstrap()}if(event==='SIGNED_OUT'){const wasIn=!!user&&!_manualSignOut;_manualSignOut=false;user=null;wk=null;wkHist=null;aiActivePlan=null;unsubscribeInsights();aiUnlocked=false;insights=[];tourState=null;coachReview=null;if(reminderTimer)clearInterval(reminderTimer);renderAuthV2();if(wasIn)uiModal({title:'Session expired',body:'For your security you were signed out. Sign in again to continue.',tone:'info',icon:'\u23f1',actions:[{label:'Sign in',primary:true}]})}if(event==='PASSWORD_RECOVERY'){recoveryMode=true;renderPasswordRecovery()}});
 let reminders = [];
 let pushEnabled = false;
 let reminderTimer = null;
@@ -817,14 +827,20 @@ async function exportData(){
 }
 function renderPasswordRecovery(){
  $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>ACCOUNT RECOVERY</small></div></div><h1>Set a new password.</h1><p class="muted">Choose a new password for your account.</p><form id="recoverForm"><div class="field"><label>NEW PASSWORD</label><input name="password" type="password" minlength="8" required autocomplete="new-password"/></div><div class="field"><label>CONFIRM PASSWORD</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"/></div><button class="btn primary" style="width:100%">Update password</button><p class="muted small" id="recoverMsg"></p></form></div></div>`;
- $('#recoverForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),p=f.get('password');if(p!==f.get('confirm')){$('#recoverMsg').textContent='Passwords do not match.';return}const b=e.currentTarget.querySelector('button');b.disabled=true;try{const {error}=await supabase.auth.updateUser({password:p});if(error)throw error;recoveryMode=false;session=(await supabase.auth.getSession()).data.session;toast('Password updated');await bootstrap()}catch(err){$('#recoverMsg').textContent=err.message}finally{b.disabled=false}};
+ $('#recoverForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),p=f.get('password');if(p!==f.get('confirm')){$('#recoverMsg').textContent='Passwords do not match.';uiModal({title:'Passwords don\u2019t match',body:'Type the same new password in both fields.',actions:[{label:'OK',primary:true}]});return}const b=e.currentTarget.querySelector('button');b.disabled=true;try{const {error}=await supabase.auth.updateUser({password:p});if(error)throw error;recoveryMode=false;session=(await supabase.auth.getSession()).data.session;toast('Password updated');await bootstrap()}catch(err){const f=friendlyError(err);$('#recoverMsg').textContent=f.title+'.';uiModal({title:f.title,body:f.body,actions:[{label:'OK',primary:true}]})}finally{b.disabled=false}};
 }
 function renderAuthV2(){
- $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><h1>Own the process.</h1><p class="muted">Your nutrition, training and progress. One private workspace.</p><div class="authswitch"><button class="btn primary" id="modeIn">Sign in</button><button class="btn" id="modeUp">Create account</button></div><form id="authForm"><div id="nameField" class="field hidden"><label>YOUR NAME</label><input name="name" autocomplete="name" placeholder="Name"/></div><div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"/></div><div class="field"><label>PASSWORD</label><input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"/></div><button class="btn primary" style="width:100%;margin-top:8px" type="submit">Sign in</button><button class="btn ghost" id="forgotPass" style="width:100%;margin-top:8px" type="button">Forgot password?</button><p class="muted small" id="authMsg">Your account is secured with Supabase authentication.</p></form><p class="muted small">Your private tracking data is protected by per-account database policies.</p></div></div>`;
- let mode='in';const setMode=m=>{mode=m;$('#modeIn').classList.toggle('primary',m==='in');$('#modeUp').classList.toggle('primary',m==='up');$('#nameField').classList.toggle('hidden',m==='in');$('#authForm button[type=submit]').textContent=m==='in'?'Sign in':'Create account';$('#authMsg').textContent=m==='in'?'Use your account email and password.':'We may send a verification link to your email.'};
+ $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><h1>Own the process.</h1><p class="muted">Your nutrition, training and progress. One private workspace.</p><div class="authswitch"><button class="btn primary" id="modeIn">Sign in</button><button class="btn" id="modeUp">Create account</button></div><form id="authForm"><div id="nameField" class="field hidden"><label>YOUR NAME</label><input name="name" autocomplete="name" placeholder="Name"/></div><div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"/></div><div class="field"><label>PASSWORD</label><div class="pw"><input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"/><button type="button" class="pwtoggle" id="pwToggle" aria-label="Show password" aria-pressed="false">Show</button></div></div><button class="btn primary" style="width:100%;margin-top:8px" type="submit">Sign in</button><button class="btn ghost" id="forgotPass" style="width:100%;margin-top:8px" type="button">Forgot password?</button><p class="muted small" id="authMsg">Your account is secured with Supabase authentication.</p></form><p class="muted small">Your private tracking data is protected by per-account database policies.</p></div></div>`;
+ let mode='in';const setMode=m=>{mode=m;$('#modeIn').classList.toggle('primary',m==='in');$('#modeUp').classList.toggle('primary',m==='up');$('#nameField').classList.toggle('hidden',m==='in');$('#authForm button[type=submit]').textContent=m==='in'?'Sign in':'Create account';$('#authMsg').textContent=m==='in'?'Use your account email and password.':'We may send a verification link to your email.';$('input[name=password]').autocomplete=m==='in'?'current-password':'new-password'};
  $('#modeIn').onclick=()=>setMode('in');$('#modeUp').onclick=()=>setMode('up');
- $('#forgotPass').onclick=async()=>{const email=$('input[name=email]').value.trim();if(!email){$('#authMsg').textContent='Enter your email address first.';return}try{const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin});if(error)throw error;$('#authMsg').textContent='Password reset email sent. Open it on this device and follow the link.'}catch(err){$('#authMsg').textContent=err.message}};
- $('#authForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),email=f.get('email'),password=f.get('password'),b=e.currentTarget.querySelector('button[type=submit]');b.disabled=true;b.textContent='Please wait…';try{if(mode==='up'){const {data,error}=await supabase.auth.signUp({email,password,options:{data:{name:f.get('name')},emailRedirectTo:location.origin}});if(error)throw error;if(data.session){session=data.session;await bootstrap()}else $('#authMsg').textContent='Account request received. Check your inbox for the verification link, then sign in.'}else{const {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;session=data.session;await bootstrap()}}catch(err){if(mode==='in'&&/confirm/i.test(err.message))showVerifyModal(email,password);else $('#authMsg').textContent=err.message}finally{b.disabled=false;b.textContent=mode==='in'?'Sign in':'Create account'}};
+ $('#pwToggle').onclick=()=>{const i=$('input[name=password]'),t=$('#pwToggle'),show=i.type==='password';i.type=show?'text':'password';t.textContent=show?'Hide':'Show';t.setAttribute('aria-pressed',String(show));t.setAttribute('aria-label',show?'Hide password':'Show password')};
+ $('#forgotPass').onclick=()=>authForgot();
+ $('#authForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),email=String(f.get('email')).trim(),password=f.get('password'),b=e.currentTarget.querySelector('button[type=submit]');
+  if(!navigator.onLine){authError({message:'Failed to fetch'},{email,mode,setMode});return}
+  b.disabled=true;b.textContent='Please wait…';
+  try{if(mode==='up'){const {data,error}=await supabase.auth.signUp({email,password,options:{data:{name:f.get('name')},emailRedirectTo:location.origin}});if(error)throw error;if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0)throw {message:'User already registered'};if(data.session){session=data.session;await bootstrap()}else showVerifyModal(email,password)}else{const {data,error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error;session=data.session;await bootstrap()}}
+  catch(err){if(mode==='in'&&/confirm/i.test(err.message||''))showVerifyModal(email,password);else authError(err,{email,mode,setMode})}
+  finally{b.disabled=false;b.textContent=mode==='in'?'Sign in':'Create account'}};
 }
 function planningV2(){
  const groups=['PROTEIN','DAIRY','PANTRY','PRODUCE'];
@@ -1013,12 +1029,12 @@ function wireWk(){
  pb.querySelectorAll('[data-wktick]').forEach(b=>b.onclick=()=>{const [xi,si]=b.dataset.wktick.split(':').map(Number);wkToggle(xi,si)});
  pb.querySelectorAll('[data-wkaddset]').forEach(b=>b.onclick=()=>{const e=wk.exs[Number(b.dataset.wkaddset)],l=e.sets[e.sets.length-1];e.sets.push({kg:l?.kg??'',reps:l?.reps??10,done:false,pr:false});wkSave();renderWk(true)});
  pb.querySelectorAll('[data-wkdelset]').forEach(b=>b.onclick=()=>{const e=wk.exs[Number(b.dataset.wkdelset)];if(e.sets.length>1){e.sets.pop();wkSave();renderWk(true)}});
- pb.querySelectorAll('[data-wkdelex]').forEach(b=>b.onclick=()=>{const e=wk.exs[Number(b.dataset.wkdelex)];if(e.sets.some(s=>s.done)&&!confirm('Remove '+e.name+' and its logged sets?'))return;wk.exs.splice(Number(b.dataset.wkdelex),1);wkSave();renderWk(true)});
+ pb.querySelectorAll('[data-wkdelex]').forEach(b=>b.onclick=async()=>{const e=wk.exs[Number(b.dataset.wkdelex)];if(e.sets.some(s=>s.done)&&!await uiConfirm('Remove exercise?','Remove '+e.name+' and its logged sets?',{confirm:'Remove',danger:true}))return;wk.exs.splice(Number(b.dataset.wkdelex),1);wkSave();renderWk(true)});
  pb.querySelectorAll('[data-wkrest]').forEach(b=>b.onclick=()=>{wkRestDefault=Number(b.dataset.wkrest);renderWk(true)});
  $('#wkTitle').oninput=e=>{wk.title=e.target.value;wkSave()};
  $('#wkAddEx').onsubmit=e=>{e.preventDefault();const n=new FormData(e.currentTarget).get('name').trim();if(!n)return;wk.exs.push(wkMakeEx(n));wkSave();renderWk(true);setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),30)};
  $('#wkFinish').onclick=wkFinishModal;
- $('#wkDiscard').onclick=()=>{if(!confirm('Discard this workout? Nothing will be saved.'))return;wk=null;wkRest=null;wkSave();renderWk()};
+ $('#wkDiscard').onclick=async()=>{if(!await uiConfirm('Discard workout?','Nothing from this session will be saved.',{confirm:'Discard',danger:true}))return;wk=null;wkRest=null;wkSave();renderWk()};
  $('#wkRestAdd').onclick=()=>{wkRest=Math.max(wkRest||0,Date.now())+15000};
  $('#wkRestSkip').onclick=()=>{wkRest=null};
  clearInterval(wkTick);wkTick=setInterval(wkTickFn,500);wkTickFn();
@@ -1046,6 +1062,63 @@ function showVerifyModal(email,password){
  $('#vmChange').onclick=()=>m.remove();
  $('#vmDone').focus();
 }
+
+
+/* ================= v4: feedback layer — popups, friendly errors, offline/session states ================= */
+function uiModal({icon='!',title,body='',actions=[{label:'OK',primary:true}],tone='error',id='uiModal'}){
+ document.getElementById(id)?.remove();
+ _modalOpener=document.activeElement;
+ const m=document.createElement('div');m.className='modal-bg';m.id=id;
+ m.innerHTML=`<div class="modal tone-${tone}" role="alertdialog" aria-modal="true" aria-labelledby="${id}T" aria-describedby="${id}B"><div class="mail-ico ico-${tone}" aria-hidden="true">${icon}</div><h2 id="${id}T">${esc(title)}</h2><p class="muted" id="${id}B">${body}</p><div class="modal-actions">${actions.map((a,i)=>`<button type="button" class="btn ${a.primary?'primary':a.danger?'danger':'ghost'}" data-act="${i}">${esc(a.label)}</button>`).join('')}</div></div>`;
+ document.body.appendChild(m);
+ const close=()=>{m.remove();document.removeEventListener('keydown',onKey,true);try{_modalOpener?.focus?.()}catch(_){}};
+ const run=i=>{const a=actions[i];close();try{a.onClick&&a.onClick()}catch(e){console.error(e)}};
+ const onKey=e=>{if(e.key==='Escape'){e.stopPropagation();run(actions.findIndex(a=>a.cancel)>=0?actions.findIndex(a=>a.cancel):actions.length-1)}
+  if(e.key==='Tab'){const f=[...m.querySelectorAll('button')];if(!f.length)return;const first=f[0],last=f[f.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}};
+ document.addEventListener('keydown',onKey,true);
+ m.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>run(Number(b.dataset.act)));
+ const pri=m.querySelector('.btn.primary')||m.querySelector('.btn');pri&&pri.focus();
+ return m;
+}
+function uiConfirm(title,body,{confirm='Confirm',cancel='Cancel',danger=false}={}){
+ return new Promise(res=>uiModal({icon:danger?'!':'?',title,body:esc(body),tone:danger?'error':'info',id:'uiConfirm',actions:[{label:cancel,cancel:true,onClick:()=>res(false)},{label:confirm,primary:!danger,danger,onClick:()=>res(true)}]}));
+}
+function friendlyError(err){
+ const raw=String(err?.message||err||'');const code=String(err?.code||err?.error_code||'');
+ if(/invalid login credentials|invalid_credentials/i.test(raw+code))return{kind:'creds',title:'Wrong email or password',body:'That email and password don’t match an account. Check for typos, or reset your password.'};
+ if(/rate limit|too many|over_request|over_email_send|429/i.test(raw+code))return{kind:'rate',title:'Too many attempts',body:'Slow down a bit. Wait a minute or two, then try again.'};
+ if(/already registered|already been registered|user_already_exists/i.test(raw+code))return{kind:'exists',title:'Account already exists',body:'There is already an account with that email. Sign in instead, or reset your password.'};
+ if(/weak_password|password should|pwned|easy to guess|at least \d+ char/i.test(raw+code))return{kind:'weak',title:'Choose a stronger password',body:esc(raw.replace(/^AuthWeakPasswordError:?\s*/,''))||'Use at least 8 characters and avoid common passwords.'};
+ if(/failed to fetch|networkerror|load failed|network request failed|fetch failed/i.test(raw)||!navigator.onLine)return{kind:'net',title:'No connection',body:'We can’t reach the server. Check your internet connection and try again.'};
+ if(/jwt|refresh token|not authenticated|session.*(expired|missing)|invalid claim/i.test(raw+code))return{kind:'session',title:'Session expired',body:'For your security you were signed out. Sign in again to continue.'};
+ if(/signup.*disabled|signups not allowed/i.test(raw+code))return{kind:'other',title:'Sign-ups are closed',body:'New accounts are disabled right now.'};
+ return{kind:'other',title:'Something went wrong',body:esc(raw)||'Please try again.'};
+}
+function authError(err,{email='',mode='in',setMode}={}){
+ const f=friendlyError(err);const emailEl=$('input[name=email]'),pwEl=$('input[name=password]');
+ const retry=()=>{const el=(f.kind==='exists'||f.kind==='net')?emailEl:pwEl;if(el){el.focus();if(f.kind==='creds'&&el.select)el.select()}};
+ const acts=[];
+ if(f.kind==='creds')acts.push({label:'Forgot password?',onClick:()=>authForgot(email)},{label:'Create account',onClick:()=>{setMode&&setMode('up');emailEl?.focus()}});
+ if(f.kind==='exists')acts.push({label:'Forgot password?',onClick:()=>authForgot(email)},{label:'Sign in instead',onClick:()=>{setMode&&setMode('in');pwEl?.focus()}});
+ acts.push({label:f.kind==='net'?'Try again':'OK',primary:true,cancel:true,onClick:retry});
+ const am=$('#authMsg');if(am)am.textContent=f.title+'.';
+ uiModal({title:f.title,body:f.body,actions:acts,tone:'error'});
+}
+async function authForgot(emailIn){
+ const emailEl=$('input[name=email]');const email=String(emailIn||emailEl?.value||'').trim();
+ if(!email){uiModal({icon:'✉',title:'Enter your email first',body:'Type your account email in the email field, then tap “Forgot password?”.',tone:'info',actions:[{label:'OK',primary:true,onClick:()=>emailEl?.focus()}]});return}
+ try{const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin});if(error)throw error;
+  uiModal({icon:'✉',title:'Check your email',body:'If an account exists for <b>'+esc(email)+'</b>, a reset link is on its way. Open it on this device. Check spam if you don’t see it.',tone:'ok',actions:[{label:'Got it',primary:true}]})}
+ catch(err){const f=friendlyError(err);uiModal({title:f.title,body:f.body,actions:[{label:'OK',primary:true}]})}
+}
+/* error-aware toast + global safety nets */
+function fail(e){console.error(e);const f=friendlyError(e);toast((f.kind==='other'?(e?.message||f.body):f.title+'. '+f.body.replace(/<[^>]+>/g,'')),'error')}
+function toast(msg,kind){const t=$('#toast');t.textContent=msg;t.className='toast'+(kind==='error'?' err':'');t.setAttribute('role',kind==='error'?'alert':'status');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.add('hidden'),kind==='error'?6000:3200)}
+window.addEventListener('unhandledrejection',ev=>{const r=ev.reason;if(r&&/AbortError|ResizeObserver/.test(String(r.name||r.message||'')))return;console.error(r);if(document.querySelector('.modal-bg'))return;fail(r)});
+(function netBanner(){let el=null;const sync=()=>{if(!navigator.onLine){if(!el){el=document.createElement('div');el.id='offlineBar';el.setAttribute('role','alert');el.textContent='You’re offline. Changes can’t be saved until you reconnect.';document.body.appendChild(el)}}else if(el){el.remove();el=null;toast('Back online')}};window.addEventListener('online',sync);window.addEventListener('offline',sync);sync()})();
+/* accessibility: tie every .field label to its control */
+(function a11yLabels(){let n=0;const link=()=>{document.querySelectorAll('.field').forEach(f=>{const l=f.querySelector('label'),c=f.querySelector('input,select,textarea');if(!l||!c||l.htmlFor)return;if(!c.id)c.id='fld'+(++n);l.htmlFor=c.id;if(!c.getAttribute('aria-label')&&!c.placeholder)c.setAttribute('aria-label',l.textContent.trim())})};new MutationObserver(link).observe(document.getElementById('root'),{childList:true,subtree:true});link()})();
+/* session expiry: unexpected sign-out while the app is open */
 
 const {data:{session:initial}}=await supabase.auth.getSession();session=initial;if(session&&!recoveryMode)await bootstrap();else if(!recoveryMode)renderAuthV2();
 
