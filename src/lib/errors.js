@@ -1,6 +1,7 @@
 import { esc } from './format.js';
 
 // Maps raw auth/network errors to a title/body shown in dialogs.
+/** @param {any} err @returns {{kind:string,title:string,body:string}} */
 export function friendlyError(err){
  const raw=String(err?.message||err||'');const code=String(err?.code||err?.error_code||'');
  if(/invalid login credentials|invalid_credentials/i.test(raw+code))return{kind:'creds',title:'Wrong email or password',body:'That email and password don’t match an account. Check for typos, or reset your password.'};
