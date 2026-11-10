@@ -9,9 +9,12 @@
     "test:e2e": "playwright test -c tests/e2e/playwright.config.mjs",
     "lint": "eslint src",
     "typecheck": "tsc -p jsconfig.json",
-    "check": "npm run lint && npm run typecheck && npm run test:unit"
+    "check": "npm run lint && npm run typecheck && npm run test:unit && npm run test:db && npm run test:ui",
+    "test:db": "node --test tests/db/*.test.mjs",
+    "test:ui": "playwright test -c tests/ui/playwright.config.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@playwright/test": "^1.49.0",
     "@supabase/supabase-js": "^2.81.1",
     "@types/node": "^22.0.0",
