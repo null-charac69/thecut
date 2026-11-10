@@ -176,3 +176,69 @@ test('CSP guard actually reports an inline style (so the clean runs above mean s
   await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<i style="color:red">x</i>'));
   await expect.poll(() => app.csp()).not.toEqual([]);
 });
+
+test('plan: a new user generates a plan from the intake form and lands on it', async ({ page }) => {
+  const app = await openApp(page, { withPlan: false });
+  await expect(page.locator('#aiIntakeForm')).toBeVisible();
+  await expect(page.locator('.nav button[data-tab="meals"]')).toBeVisible();
+  const f = page.locator('#aiIntakeForm');
+  await f.locator('[name=age_years]').fill('28');
+  await f.locator('[name=height_cm]').fill('176');
+  await f.locator('[name=weight_kg]').fill('82');
+  await f.locator('[name=training_days_per_week]').fill('4');
+  for (const n of ['goal', 'training_location', 'dietary_pattern', 'meals_per_day']) await f.locator(`select[name=${n}]`).selectOption({ index: 1 });
+  await f.locator('[name=adult_confirmed]').check();
+  await page.locator('#aiProfileAction').click();
+  await expect.poll(async () => (await rows(app, 'ai_plan_versions')).filter((v) => v.status === 'active').length).toBe(1);
+  expect(app.aiCalls.some((c) => c.action === 'generate')).toBe(true);
+  await expect(page.getByText('PLAN UPDATED')).toBeVisible();
+  await expect(page.getByText('Refined plan, 2,000 kcal')).toBeVisible();
+  expect(app.errors).toEqual([]);
+});
+
+test('plan: refine with a message applies the refined plan', async ({ page }) => {
+  const app = await openApp(page);
+  await page.locator('#aiRefineForm textarea').fill('swap paneer for tofu');
+  await page.locator('#aiRefineForm button[type=submit]').click();
+  await expect(page.getByText('Refined plan, 2,000 kcal')).toBeVisible();
+  expect(app.aiCalls.find((c) => c.action === 'refine').instruction).toContain('tofu');
+  const g = (await rows(app, 'grocery_items')).map((x) => x.name);
+  expect(g).toContain('Soya chunks');
+  expect(g).not.toContain('Bananas');
+});
+
+test('coach: chat reply appears', async ({ page }) => {
+  const app = await openApp(page);
+  await go(page, 'coach');
+  await page.locator('#coachChatForm input, #coachChatForm textarea').first().fill('Why is protein low?');
+  await page.locator('#coachChatForm button[type=submit], #coachChatForm .btn').first().click();
+  await expect(page.getByText('Happy to help. What would you like to change?')).toBeVisible();
+  expect(app.errors).toEqual([]);
+});
+
+test('workout: log a set, finish, and the session is saved with its sets', async ({ page }) => {
+  const app = await openApp(page);
+  await go(page, 'workout');
+  await page.getByRole('button', { name: 'Start workout' }).click();
+  await page.locator('[data-wk="0:0:kg"]').fill('57.5');
+  await page.locator('[data-wk="0:0:reps"]').fill('10');
+  await page.locator('[data-wktick="0:0"]').click();
+  await expect(page.getByText('1/12 sets')).toBeVisible();
+  await page.locator('#wkFinish').click();
+  await page.locator('[data-rpe="8"]').click();
+  await page.locator('#wkSaveBtn').click();
+  await expect.poll(async () => (await rows(app, 'workout_sessions')).length).toBe(3);
+  const sets = await rows(app, 'workout_sets');
+  expect(sets.some((s) => Number(s.weight_kg) === 57.5 && Number(s.reps) === 10)).toBe(true);
+  const saved = (await rows(app, 'workout_sessions')).find((s) => s.perceived_effort === 8 && s.title === 'Pull');
+  expect(saved).toBeTruthy();
+  expect(app.errors).toEqual([]);
+});
+
+test('workout: finishing with no ticked sets is refused', async ({ page }) => {
+  await openApp(page);
+  await go(page, 'workout');
+  await page.getByRole('button', { name: 'Start workout' }).click();
+  await page.locator('#wkFinish').click();
+  await expect(page.getByText('Tick off at least one set before finishing.')).toBeVisible();
+});

@@ -9,9 +9,11 @@
     "test:e2e": "playwright test -c tests/e2e/playwright.config.mjs",
     "lint": "eslint src",
     "typecheck": "tsc -p jsconfig.json",
-    "check": "npm run lint && npm run typecheck && npm run test:unit && npm run test:db && npm run test:ui",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test:unit && npm run test:db && npm run test:ui",
     "test:db": "node --test tests/db/*.test.mjs",
-    "test:ui": "playwright test -c tests/ui/playwright.config.mjs"
+    "test:ui": "playwright test -c tests/ui/playwright.config.mjs",
+    "format": "prettier --write \"src/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\""
   },
   "devDependencies": {
     "@babel/generator": "^8.1.0",

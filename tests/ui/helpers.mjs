@@ -15,13 +15,14 @@ export async function openApp(page, { signedIn = true, withPlan = true, ai, path
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   await page.route('https://esm.sh/**', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' }, body: FAKE }));
+  const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' };
   await page.route(AI_URL, async (r) => {
+    if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: cors });
     const body = JSON.parse(r.request().postData() || '{}'); aiCalls.push(body);
     const out = ai ? ai(body) : defaultAi(body);
     const [status, json] = Array.isArray(out) ? out : [200, out];
-    await r.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(json) });
+    await r.fulfill({ status, contentType: 'application/json', headers: cors, body: JSON.stringify(json) });
   });
-  await page.route('**/functions/v1/the-cut-ai', (r) => r.fallback());
   await page.addInitScript((d) => { window.__FAKE = d; window.__cspViolations = []; document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(e.violatedDirective + ' ' + (e.blockedURI || '') + ' ' + (e.sample || ''))); }, db);
   await page.clock.setFixedTime(new Date(NOW));
   await page.goto(path);
