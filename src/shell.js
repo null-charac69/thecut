@@ -39,7 +39,16 @@ import {
   rfSave,
   updateAIEditPreview,
 } from './plan.js';
-import { addGroceryV2, addPrep, deleteRow, loadGroceries, prepV3, updateGrocery, updatePrep } from './prep.js';
+import {
+  addGroceryV2,
+  addPrep,
+  deleteRow,
+  ensureLists,
+  loadGroceries,
+  prepV3,
+  updateGrocery,
+  updatePrep,
+} from './prep.js';
 import { fail, toast } from './ui.js';
 import { loadWeight, saveWeightV3, weightV3 } from './weight.js';
 import { loadWkHistory, wireWk, wkBegin, workoutV3 } from './workout.js';
@@ -65,34 +74,8 @@ export async function bootstrap() {
           timezone: 'Asia/Kolkata',
         })
       );
-    if (!st)
-      await q(
-        supabase.from('user_settings').upsert({
-          user_id: S.user.id,
-          calorie_target: 1566,
-          protein_target_g: 139,
-          carbs_target_g: 105.3,
-          fat_target_g: 64.4,
-          water_target_ml: 2500,
-        })
-      );
-    S.settings = st || {
-      calorie_target: 1566,
-      protein_target_g: 139,
-      carbs_target_g: 105.3,
-      fat_target_g: 64.4,
-      water_target_ml: 2500,
-    };
-    if (st && (st.carbs_target_g == null || st.fat_target_g == null)) {
-      S.settings = { ...st, carbs_target_g: st.carbs_target_g ?? 105.3, fat_target_g: st.fat_target_g ?? 64.4 };
-      await q(
-        supabase.from('user_settings').upsert({
-          user_id: S.user.id,
-          carbs_target_g: S.settings.carbs_target_g,
-          fat_target_g: S.settings.fat_target_g,
-        })
-      );
-    }
+    if (!st) await q(supabase.from('user_settings').upsert({ user_id: S.user.id }));
+    S.settings = st || {};
     await ensureTemplates();
     await ensureDay(S.date);
     await loadDay();
@@ -183,7 +166,10 @@ export async function render() {
     await loadActivePlan();
     if (S.tab === 'ai' || S.tab === 'account') await loadModule();
     if (S.tab === 'weight') await loadWeight();
-    if (S.tab === 'prep') await loadGroceries();
+    if (S.tab === 'prep') {
+      await loadGroceries();
+      ensureLists(); // not awaited: the page shows its building state while the AI works
+    }
     if (S.tab === 'workout' || S.tab === 'coach') {
       await loadPlanHistory();
       if (S.tab === 'workout' && S.aiActivePlan && !S.wkHist) {
@@ -340,6 +326,7 @@ export function wireV3() {
   wireAccount();
   document.querySelectorAll('[data-wkstart]').forEach((b) => (b.onclick = () => wkBegin(b.dataset.wkstart)));
   document.querySelectorAll('[data-wkundo]').forEach((b) => (b.onclick = () => undoWorkoutReview(b.dataset.wkundo, b)));
+  document.querySelectorAll('[data-lists-regen]').forEach((b) => (b.onclick = () => ensureLists({ force: true })));
   document.querySelectorAll('[data-prepview]').forEach(
     (b) =>
       (b.onclick = () => {

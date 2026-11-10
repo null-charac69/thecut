@@ -16,10 +16,12 @@ test('shift moves dates across month and year boundaries', () => {
   assert.equal(shift('2026-03-01', -1), '2026-02-28');
 });
 
-test('weekStart returns the Monday of the week', () => {
-  assert.equal(weekStart('2026-11-10'), '2026-11-09'); // Tuesday
-  assert.equal(weekStart('2026-11-09'), '2026-11-09'); // Monday
-  assert.equal(weekStart('2026-11-15'), '2026-11-09'); // Sunday
+test('weekStart returns the Sunday that starts the week', () => {
+  assert.equal(weekStart('2026-11-10'), '2026-11-08'); // Tuesday
+  assert.equal(weekStart('2026-11-09'), '2026-11-08'); // Monday
+  assert.equal(weekStart('2026-11-08'), '2026-11-08'); // Sunday starts a new week
+  assert.equal(weekStart('2026-11-14'), '2026-11-08'); // Saturday ends it
+  assert.equal(weekStart('2026-11-15'), '2026-11-15'); // next Sunday
 });
 
 test('fmt uses Indian grouping with at most one decimal', () => {

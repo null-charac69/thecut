@@ -1,8 +1,8 @@
 // Deterministic fixture data for the mocked-backend UI tests.
-// "Now" is Tuesday 2026-11-10 11:30 IST, so the planned session today is the Tue entry of the training week.
+// "Now" is Tuesday 2026-11-10 11:30 IST (the week started on Sunday the 8th), so the planned session today is the Tue entry of the training week.
 export const NOW = '2026-11-10T06:00:00.000Z';
 export const TODAY = '2026-11-10';
-export const WEEK = '2026-11-09';
+export const WEEK = '2026-11-08'; // weeks run Sunday to Saturday
 export const EMAIL = 'tester@example.com';
 export const PASSWORD = 'correct-horse-battery';
 const U = '11111111-1111-4111-8111-111111111111';
@@ -32,11 +32,19 @@ export const planA = {
     meal('Snack', '17:30', [item('Greek yogurt', 200, 'g', 160, 20, 8, 5), item('Banana', 1, 'medium', 105, 1, 27, 0)]),
     meal('Dinner', '20:30', [item('Paneer', 120, 'g', 320, 22, 4, 24), item('Roti', 2, 'pieces', 240, 8, 44, 4)]),
   ],
-  grocery_list: [{ name: 'Eggs', quantity: '30', category: 'PROTEIN' }, { name: 'Chicken breast', quantity: '1.5 kg', category: 'PROTEIN' }, { name: 'Greek yogurt', quantity: '1.4 kg', category: 'DAIRY' }, { name: 'Oats', quantity: '350 g', category: 'PANTRY' }, { name: 'Bananas', quantity: '7', category: 'PRODUCE' }],
-  prep_tasks: ['Boil 6 eggs', 'Portion chicken for 3 days'], training_week: trainingWeek, estimated_daily_cost_inr: 380,
+  training_week: trainingWeek, estimated_daily_cost_inr: 380,
 };
-export const planOld = { ...planA, title: 'Maintenance, 2,500 kcal', targets: { ...planA.targets, calories_kcal: 2500, protein_g: 150 }, grocery_list: [{ name: 'Eggs', quantity: '30', category: 'PROTEIN' }, { name: 'Tofu', quantity: '600 g', category: 'PROTEIN' }], prep_tasks: ['Press tofu'] };
-const planDraft = { ...planA, title: 'Lean bulk, 2,800 kcal', targets: { ...planA.targets, calories_kcal: 2800, protein_g: 170 } };
+export const planOld = { ...planA, title: 'Maintenance, 2,500 kcal', targets: { ...planA.targets, calories_kcal: 2500, protein_g: 150 } };
+// The draft is vegetarian: applying it must remove chicken and eggs from the lists.
+const planDraft = {
+  ...planA, title: 'Lean bulk, 2,800 kcal', targets: { ...planA.targets, calories_kcal: 2800, protein_g: 170 },
+  meals: [
+    meal('Breakfast', '08:00', [item('Besan chilla', 3, 'pieces', 330, 20, 40, 8), item('Oats', 50, 'g', 190, 7, 33, 3)]),
+    meal('Lunch', '13:00', [item('Soya chunks', 80, 'g dry', 280, 42, 26, 1), item('White rice', 60, 'g dry', 210, 4, 46, 0)]),
+    meal('Snack', '17:30', [item('Greek yogurt', 200, 'g', 160, 20, 8, 5), item('Banana', 1, 'medium', 105, 1, 27, 0)]),
+    meal('Dinner', '20:30', [item('Paneer', 120, 'g', 320, 22, 4, 24), item('Roti', 2, 'pieces', 240, 8, 44, 4)]),
+  ],
+};
 const intake = { adult_confirmed: true, age_years: 26, sex: 'male', height_cm: 176, weight_kg: 82, target_weight_kg: 76, goal: 'fat_loss', activity_level: 'moderate', training_experience: 'intermediate', training_days_per_week: 5, training_location: 'gym', dietary_pattern: 'eggetarian', meals_per_day: 4, food_budget_inr: 400, cooking_minutes: 45, location: 'Pune, India', goal_timeline_weeks: 16, allergies: '', food_preferences: 'eggs, chicken, dahi', preferred_cuisines: 'Indian home food', additional_notes: '' };
 
 export function makeDb({ signedIn = true, withPlan = true } = {}) {
@@ -46,9 +54,9 @@ export function makeDb({ signedIn = true, withPlan = true } = {}) {
   T.profiles = [{ id: U, display_name: 'Tester', timezone: 'Asia/Kolkata' }];
   T.user_settings = [{ user_id: U, calorie_target: withPlan ? 2100 : 1566, protein_target_g: withPlan ? 165 : 139, carbs_target_g: 190, fat_target_g: 62, fiber_target_g: 30, water_target_ml: 3000 }];
   T.ai_plan_versions = withPlan ? [
-    { id: id(1), user_id: U, title: planA.title, status: 'active', inputs: intake, plan: planA, model: 'fixture', prompt_version: 'the-cut-plan-v2', created_at: '2026-11-09T08:00:00Z', applied_at: '2026-11-09T08:01:00Z' },
-    { id: id(2), user_id: U, title: planOld.title, status: 'superseded', inputs: intake, plan: planOld, model: 'fixture', prompt_version: 'the-cut-plan-v2', created_at: '2026-11-05T08:00:00Z', applied_at: '2026-11-05T08:01:00Z' },
-    { id: id(3), user_id: U, title: planDraft.title, status: 'draft', inputs: intake, plan: planDraft, model: 'fixture', prompt_version: 'the-cut-plan-v2', created_at: '2026-11-10T05:00:00Z', applied_at: null },
+    { id: id(1), user_id: U, title: planA.title, status: 'active', inputs: intake, plan: planA, model: 'fixture', prompt_version: 'the-cut-plan-v3', created_at: '2026-11-09T08:00:00Z', applied_at: '2026-11-09T08:01:00Z' },
+    { id: id(2), user_id: U, title: planOld.title, status: 'superseded', inputs: intake, plan: planOld, model: 'fixture', prompt_version: 'the-cut-plan-v3', created_at: '2026-11-05T08:00:00Z', applied_at: '2026-11-05T08:01:00Z' },
+    { id: id(3), user_id: U, title: planDraft.title, status: 'draft', inputs: intake, plan: planDraft, model: 'fixture', prompt_version: 'the-cut-plan-v3', created_at: '2026-11-10T05:00:00Z', applied_at: null },
   ] : [];
   T.meal_templates = []; T.meal_template_items = []; T.daily_meals = [];
   if (withPlan) {
@@ -74,8 +82,14 @@ export function makeDb({ signedIn = true, withPlan = true } = {}) {
   }
   T.workout_feedback = [];
   T.workout_reviews = withPlan ? [{ id: id(900), user_id: U, workout_session_id: id(701), headline: 'Solid push day', analysis: 'You hit every planned set. Bench is moving well, so the load goes up slightly next week.', issues: ['Overhead press reps dropped on the last set'], change_notes: ['Bench target raised'], prev_week: null, new_week: null, model: 'fixture', undone_at: null, created_at: '2026-11-09T12:00:00Z' }] : [];
-  T.grocery_items = withPlan ? planA.grocery_list.map((g, i) => ({ id: id(1000 + i), user_id: U, week_start: WEEK, name: g.name, quantity: g.quantity, category: g.category, sort_order: i, is_purchased: i < 2, source_version_id: id(1) })) : [];
-  T.prep_tasks = withPlan ? planA.prep_tasks.map((t, i) => ({ id: id(1100 + i), user_id: U, local_date: TODAY, task: t, sort_order: i, is_completed: i === 0, source_version_id: id(1) })) : [];
+  // Lists the AI built earlier this week for plan A (categories are whatever the AI chose; legacy rows may be upper case).
+  const seedG = [['Whole eggs', '30', 'Protein'], ['Chicken breast', '1.5 kg', 'PROTEIN'], ['Greek yogurt', '1.4 kg', 'Dairy'], ['Oats', '350 g', 'Pantry'], ['Bananas', '7', 'Fresh fruit']];
+  T.grocery_items = withPlan ? seedG.map(([name, quantity, category], i) => ({ id: id(1000 + i), user_id: U, week_start: WEEK, name, quantity, category, sort_order: i, is_purchased: i === 0, source_version_id: id(1) })) : [];
+  T.prep_tasks = withPlan ? [
+    ...['Boil 6 eggs', 'Portion chicken for 3 days'].map((t, i) => ({ id: id(1100 + i), user_id: U, local_date: TODAY, task: t, sort_order: i, is_completed: i === 0, source_version_id: id(1) })),
+    { id: id(1110), user_id: U, local_date: '2026-11-09', task: 'Marinate chicken', sort_order: 0, is_completed: false, source_version_id: id(1) }, // yesterday: history
+  ] : [];
+  T.list_generations = withPlan ? [{ user_id: U, week_start: WEEK, plan_hash: planHash(planA.meals), plan_version_id: id(1), generated_from: WEEK }] : [];
   T.agent_insights = withPlan ? [
     { id: id(1200), user_id: U, kind: 'protein', severity: 'watch', title: 'Protein is running low', body: 'Protein averages 128 g on logged days vs your 165 g target (78%).', data: {}, insight_date: TODAY, created_at: '2026-11-10T03:00:00Z', read_at: null, dismissed_at: null },
     { id: id(1201), user_id: U, kind: 'training', severity: 'good', title: 'Training is on plan', body: '4 sessions logged vs 4 planned this week.', data: {}, insight_date: TODAY, created_at: '2026-11-10T02:00:00Z', read_at: '2026-11-10T02:30:00Z', dismissed_at: null },
@@ -84,4 +98,7 @@ export function makeDb({ signedIn = true, withPlan = true } = {}) {
   return { tables: T, session: signedIn ? session : null, sessions: { [EMAIL]: session }, accounts: { [EMAIL]: PASSWORD }, calls: [] };
 }
 
-export const aiPlanResponse = (title = 'Refined plan, 2,000 kcal') => ({ plan: { ...planA, title, summary: 'Refined as requested.', targets: { ...planA.targets, calories_kcal: 2000 }, grocery_list: [{ name: 'Eggs', quantity: '30', category: 'PROTEIN' }, { name: 'Soya chunks', quantity: '500 g', category: 'PROTEIN' }], prep_tasks: ['Soak soya chunks'] }, model: 'fixture', prompt_version: 'the-cut-plan-v2' });
+// Same recipe as the edge function: the lists are built from the meals' item names, in order.
+export const planHash = (meals) => meals.map((m) => m.name + ':' + m.items.map((i) => i.name).join(',')).join('|');
+
+export const aiPlanResponse = (title = 'Refined plan, 2,000 kcal') => ({ plan: { ...planA, title, summary: 'Refined as requested.', targets: { ...planA.targets, calories_kcal: 2000 }, meals: planA.meals.map((m) => ({ ...m, items: m.items.map((i) => (i.name === 'Paneer' ? { ...i, name: 'Tofu' } : i)) })) }, model: 'fixture', prompt_version: 'the-cut-plan-v3' });

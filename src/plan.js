@@ -4,6 +4,7 @@ import { S } from './state.js';
 import { $, SUPABASE_KEY, SUPABASE_URL, q, supabase } from './client.js';
 import { ackState } from './coach.js';
 import { ensureDay, ensureTemplates, loadDay } from './meals.js';
+import { markListsStale } from './prep.js';
 import { card, foldCard, pageHead, render } from './shell.js';
 import { fail, toast, toastUndo, uiConfirm } from './ui.js';
 
@@ -360,7 +361,7 @@ export function setAIProgress(action) {
             'Reading your plan…',
             'Rebalancing macros…',
             'Swapping foods…',
-            'Rebuilding your grocery list…',
+            'Checking portions and prep…',
             'Almost there…',
           ]
         : ['Calculating your targets…', 'Designing your meals…', 'Building your training week…', 'Almost there…'];
@@ -506,7 +507,7 @@ async function applyAIPlanCore(id, opts = {}) {
     !opts.quiet &&
     !(await uiConfirm(
       'Apply this plan?',
-      'Active meal templates will be archived, targets updated, and missing grocery/prep items added. Completed and historical meal logs are kept.',
+      'Active meal templates will be archived and targets updated. Your grocery list and prep are rebuilt from the new plan. Completed and historical meal logs are kept.',
       { confirm: 'Apply plan' }
     ))
   )
@@ -590,6 +591,7 @@ export async function loadModule() {
 
 /* every plan edit that reaches the database is reviewed by the coach after a short debounce, and applying a plan acknowledges the coach state */
 export async function applyAIPlan(...a) {
+  markListsStale();
   const r = await applyAIPlanCore(...a);
   try {
     ackState();

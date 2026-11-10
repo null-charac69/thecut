@@ -283,7 +283,7 @@ details.fold{padding:0}details.fold>summary{list-style:none;display:flex;justify
 .plan-now .eyebrow,.plan-change .eyebrow,.coach .eyebrow{color:var(--lime)}
 .ai-section-title{color:var(--text);font-size:13px;letter-spacing:0;text-transform:none}
 .metric .label,.field label{font-size:12px;letter-spacing:0}
-.eyebrow.cat{text-transform:lowercase}.eyebrow.cat::first-letter{text-transform:uppercase}
+
 .page h1{letter-spacing:-.02em}
 .hero,.coach,.plan-change{background:var(--panel)}
 .plan-change{border-color:var(--line)}

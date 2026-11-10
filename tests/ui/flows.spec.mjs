@@ -202,9 +202,13 @@ test('plan: refine with a message applies the refined plan', async ({ page }) =>
   await page.locator('#aiRefineForm button[type=submit]').click();
   await expect(page.getByText('Refined plan, 2,000 kcal')).toBeVisible();
   expect(app.aiCalls.find((c) => c.action === 'refine').instruction).toContain('tofu');
+  // The refined plan swapped paneer for tofu: the lists are rebuilt from it when Prep opens.
+  await go(page, 'prep');
+  await expect(page.getByText('Building your lists from your plan…')).toHaveCount(0);
+  await expect(page.locator('[data-grocery]').first()).toBeVisible();
   const g = (await rows(app, 'grocery_items')).map((x) => x.name);
-  expect(g).toContain('Soya chunks');
-  expect(g).not.toContain('Bananas');
+  expect(g).toContain('Tofu');
+  expect(g).not.toContain('Paneer');
 });
 
 test('coach: chat reply appears', async ({ page }) => {
@@ -241,4 +245,82 @@ test('workout: finishing with no ticked sets is refused', async ({ page }) => {
   await page.getByRole('button', { name: 'Start workout' }).click();
   await page.locator('#wkFinish').click();
   await expect(page.getByText('Tick off at least one set before finishing.')).toBeVisible();
+});
+
+// ---------- Prep & grocery: AI-built lists that follow the plan ----------
+const cats = (page) => page.locator('#pagebody h3.cat').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
+const lists = (app) => app.aiCalls.filter((c) => c.action === 'lists');
+
+test('prep: category headers are in sentence case and grouped from the data', async ({ page }) => {
+  const app = await openApp(page);
+  await go(page, 'prep');
+  await expect(page.locator('[data-grocery]').first()).toBeVisible();
+  const heads = await cats(page);
+  expect(heads).toEqual(['Protein', 'Dairy', 'Pantry', 'Fresh fruit']); // 'PROTEIN' and 'Protein' rows share one group
+  expect(heads.every((h) => h === h.charAt(0).toUpperCase() + h.slice(1).toLowerCase())).toBe(true);
+  expect(app.errors).toEqual([]);
+});
+
+test('prep: nothing is rebuilt when the plan has not changed since this week\'s lists were built', async ({ page }) => {
+  const app = await openApp(page);
+  await go(page, 'prep');
+  await expect(page.locator('[data-grocery]').first()).toBeVisible();
+  await expect.poll(() => lists(app).length).toBe(1); // asked once; the server answers "current"
+  const g = (await rows(app, 'grocery_items')).map((x) => x.name).sort();
+  expect(g).toEqual(['Bananas', 'Chicken breast', 'Greek yogurt', 'Oats', 'Whole eggs']);
+  await page.locator('[data-prepview="prep"]').click();
+  await page.locator('[data-prepview="grocery"]').click();
+  expect(lists(app).length).toBe(1); // switching views does not ask again
+});
+
+test('prep: going vegetarian mid-week replaces chicken in the groceries and prep, and keeps what was ticked or is history', async ({ page }) => {
+  const app = await openApp(page);
+  await expect(page.getByText('Lean bulk, 2,800 kcal')).toBeVisible();
+  await page.getByRole('button', { name: 'Apply to my workspace' }).click();
+  await page.locator('#uiConfirm [data-act="1"]').click();
+  await expect(page.locator('.plan-now h2')).toHaveText('Lean bulk, 2,800 kcal');
+  await go(page, 'prep');
+  await expect.poll(async () => (await rows(app, 'grocery_items')).some((g) => g.name === 'Soya chunks')).toBe(true);
+  await expect(page.locator('[data-grocery]').first()).toBeVisible();
+  const g = (await rows(app, 'grocery_items')).map((x) => x.name);
+  expect(g).not.toContain('Chicken breast'); // unticked AI item of the old plan is gone
+  expect(g).toContain('Whole eggs'); // already bought: stays, now the user's own item
+  expect(g).toEqual(expect.arrayContaining(['Besan chilla', 'Soya chunks', 'Paneer']));
+  const prep = await rows(app, 'prep_tasks');
+  expect(prep.filter((t) => t.local_date === '2026-11-10').map((t) => t.task)).not.toContain('Portion chicken for 3 days');
+  expect(prep.filter((t) => t.local_date === '2026-11-10').map((t) => t.task)).toContain('Boil 6 eggs'); // ticked
+  expect(prep.find((t) => t.task === 'Marinate chicken')).toBeTruthy(); // yesterday is history
+  // prep exists for today and the rest of the week (Tue to Sat), not before
+  const dates = [...new Set(prep.filter((t) => t.source_version_id).map((t) => t.local_date))].sort();
+  expect(dates).toEqual(['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14']);
+  expect(lists(app).length).toBe(1);
+  expect(app.errors).toEqual([]);
+});
+
+test('prep: Regenerate asks the AI again and a failure shows a message with Try again, without looping', async ({ page }) => {
+  let fail = true;
+  const app = await openApp(page, {
+    ai: (b) => (b.action === 'lists' && b.force && fail ? [502, { error: 'The AI service is busy. Try again in a minute.' }] : undefined),
+  });
+  await go(page, 'prep');
+  await expect(page.locator('[data-grocery]').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Regenerate' }).click();
+  await expect(page.getByText('The AI service is busy. Try again in a minute.')).toBeVisible();
+  await page.locator('[data-prepview="prep"]').click();
+  await page.locator('[data-prepview="grocery"]').click();
+  expect(lists(app).length).toBe(2); // the initial check plus the forced one; no automatic retry
+  fail = false;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByText('The AI service is busy. Try again in a minute.')).toHaveCount(0);
+  expect(lists(app).filter((c) => c.force).length).toBe(2);
+  expect(lists(app).every((c) => c.week_start === '2026-11-08' && c.today === '2026-11-10')).toBe(true); // Sunday week
+});
+
+test('prep: an item added by hand goes under Other', async ({ page }) => {
+  await openApp(page);
+  await go(page, 'prep');
+  await page.locator('#groceryForm input[name=name]').fill('Lemons');
+  await page.locator('#groceryForm .btn.primary').click();
+  await expect(page.getByText('Lemons')).toBeVisible();
+  expect(await cats(page)).toContain('Other');
 });

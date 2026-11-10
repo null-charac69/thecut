@@ -12,8 +12,6 @@ const goodRaw = () => ({
     { name: 'Lunch', time: '13:00', items: [item('Rice+chicken', 700, 45, 80, 18)] },
     { name: 'Dinner', time: '20:00', items: [item('Paneer+roti', 800, 45, 70, 35)] },
   ],
-  grocery_list: [{ name: 'Eggs', quantity: '12', category: 'protein' }, { name: 'Odd', quantity: '1', category: 'weird' }],
-  prep_tasks: ['Cook rice'],
   training_week: [{ day: 'Mon', focus: 'Push', session_minutes: 60, exercises: ['Bench 3x8'] }],
 });
 
@@ -36,12 +34,12 @@ test('cleanProfile truncates long strings and drops objects', () => {
   assert.equal(out.c, 5);
 });
 
-test('normalizePlan accepts a valid plan and normalises categories', () => {
+test('normalizePlan accepts a valid plan and no longer carries plan-time grocery or prep lists', () => {
   const r = normalizePlan(goodRaw());
   assert.deepEqual(r.problems, []);
   assert.equal(r.plan.meals.length, 3);
-  assert.equal(r.plan.grocery_list[0].category, 'PROTEIN');
-  assert.equal(r.plan.grocery_list[1].category, 'PRODUCE');
+  assert.equal('grocery_list' in r.plan, false);
+  assert.equal('prep_tasks' in r.plan, false);
 });
 
 test('normalizePlan rejects plans below the 1200 kcal floor', () => {

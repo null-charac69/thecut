@@ -4,7 +4,7 @@
 |---|---|
 | **Product** | THE CUT — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.5 |
+| **Version** | 1.6 |
 | **Date** | 2026-11-10 |
 | **Baseline** | `main` @ `b5c1e86` (dynamic workouts: per-exercise feedback and AI session review; previous baselines `f8db945`, `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
@@ -47,7 +47,7 @@ Evidence names a function in `src/index.html`, a file or edge function, or a dat
 
 ## 2. Product overview
 
-THE CUT is a single-user-per-account web app. A new user signs up, verifies their email, completes an AI intake, reviews an AI-generated plan (nutrition targets, meals, groceries, prep tasks, training week) and applies it. Only then do the daily tabs unlock. Day to day the user ticks meals, logs extras, logs weight, runs live workouts and ticks groceries. A database-driven coach watches the logs and raises insights; an LLM adds weekly reviews, plan-edit review and a chat. **The AI never changes a plan silently: plan refinements and post-workout training adjustments are applied automatically, always show exactly what changed, and can be undone.**
+THE CUT is a single-user-per-account web app. A new user signs up, verifies their email, completes an AI intake and gets an AI-generated plan (nutrition targets, meals, training week) applied automatically; the grocery list and prep tasks are then built by the AI from the live meals when Prep & Grocery is opened. Only then do the daily tabs unlock. Day to day the user ticks meals, logs extras, logs weight, runs live workouts and ticks groceries. A database-driven coach watches the logs and raises insights; an LLM adds weekly reviews, plan-edit review and a chat. **The AI never changes a plan silently: plan refinements and post-workout training adjustments are applied automatically, always show exactly what changed, and can be undone.**
 
 ### 2.1 Primary navigation
 
@@ -58,7 +58,7 @@ THE CUT is a single-user-per-account web app. A new user signs up, verifies thei
 | Workout | `workout` | Live workout logger, session history, weekly training plan editor |
 | Weight | `weight` | Weigh-ins, trend, history |
 | Coach | `coach` | Insights feed, weekly review, coach chat |
-| Prep & Grocery | `prep` | Weekly grocery list and daily meal-prep tasks |
+| Prep & Grocery | `prep` | AI-built weekly grocery list and daily meal-prep tasks (weeks run Sunday to Saturday) |
 | Account (via avatar menu, not in nav) | `account` | Profile, change email/password, export data, delete account |
 
 Legacy tab names (`overview`, `nutrition`, `habits`, `training`, `progress`, `planning`, `analytics`, `settings`) are redirected to the tabs above by `LEGACY_TABS`.
@@ -136,20 +136,20 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | PLAN-04 | Diet options: omnivore, eggetarian, vegetarian, vegan; meals per day 2–6 | P1 | Done | FE `aiPlannerPage` |
 | PLAN-05 | The user must confirm they are 18+ and that output is general wellness information, not medical advice | P0 | Done | FE adult checkbox (`required`); EF `validateProfile` |
 | PLAN-06 | Server validates the profile: adult, height 120–230 cm, weight 30–350 kg, training days an integer 0–7; free text is truncated to 500 characters per field | P0 | Done | EF `plan.ts` `validateProfile`, `cleanProfile` |
-| PLAN-07 | "Generate my AI plan" creates a plan containing: title, summary, rationale, assumptions, safety notes, estimated daily cost (₹), targets (kcal, protein, carbs, fat, fibre, water), 2–6 meals with items and macros, grocery list, prep tasks, training week | P0 | Done | EF `the-cut-ai` action `generate`; FE `generateAIPlan` |
+| PLAN-07 | "Generate my AI plan" creates a plan containing: title, summary, rationale, assumptions, safety notes, estimated daily cost (₹), targets (kcal, protein, carbs, fat, fibre, water), 2–6 meals with items and macros, training week (the grocery list and prep tasks are built separately from the live meals, see PREP-06) | P0 | Done | EF `the-cut-ai` action `generate`; FE `generateAIPlan` |
 | PLAN-08 | Generated plans are validated and normalised server-side: calorie floor 1,200 kcal, ceiling 6,000 kcal, macro/calorie consistency, minimum protein (1.2 g/kg fat loss, 0.8 g/kg otherwise) | P0 | Done | EF `plan.ts` `normalizePlan`, `qualityChecks` |
 | PLAN-09 | A plan that fails quality checks gets one corrective retry; if it still fails the user sees a safety-check error and nothing is saved | P1 | Done | EF `runPlan`; returns 422 |
 | PLAN-10 | AI output is saved as a version, then **applied automatically**; Undo toast and "Undo last change" restore the previous plan; coach-proposed drafts still wait for Apply | P0 | Done | FE `saveAIDraft`; DB `ai_plan_versions.status` |
 | PLAN-11 | On-page plan review (targets, reasoning, meals, groceries, prep, training week) | P1 | Removed | Superseded by PLAN-20 and the tabs themselves; `aiPlanCard` deleted |
-| PLAN-12 | Plans from the Coach (drafts) still need an explicit "Apply to my workspace" with confirmation; the RPC atomically activates the plan (targets, meal templates, groceries, prep tasks, training week) | P0 | Done | FE `applyAIPlan` + `uiConfirm`; DB RPC `apply_ai_plan_version` |
+| PLAN-12 | Plans from the Coach (drafts) still need an explicit "Apply to my workspace" with confirmation; the RPC atomically activates the plan (targets, meal templates, training week) and clears the plan's stale AI-built groceries and prep so they are rebuilt from the new meals | P0 | Done | FE `applyAIPlan` + `uiConfirm`; DB RPC `apply_ai_plan_version` |
 | PLAN-13 | Profile stays editable; submitting edits analyses the change against the previous plan and applies the revised plan | P1 | Done | FE `describeAIProfileChanges`, `buildAIEditInstruction`, `updateAIEditPreview`, action `refine` |
 | PLAN-14 | "Refine plan": free-text instruction produces a revised plan that is applied automatically; refinement keeps calories within 20% of the accepted plan unless the instruction requires more, never below 1,200 kcal | P1 | Done | FE `refineAIPlan`; EF action `refine`, `qualityChecks` |
 | PLAN-15 | "Generate a fresh plan" creates a new plan independent of the current one | P2 | Done | FE `generateFreshAIPlan` |
 | PLAN-16 | Plan history is listed in Account with Restore on any older version; the Plan page offers "Undo last change" | P1 | Done | FE `accountV3` ("Plan history"), `aiPlanStatusCard`, `loadPlanHistory` |
 | PLAN-17 | Refinement uses the user's live plan (including direct edits) as the base | P1 | Done | EF `liveState`, `baselineRow` |
 | PLAN-18 | Prompt-injection hardening: user data is passed inside `<user_data>` and the model is told to treat it as data | P0 | Done | EF `SYSTEM` prompt |
-| PLAN-19 | Plan generation is attributed to a prompt version (`the-cut-plan-v2`) | P2 | Done | EF `plan.ts` `PROMPT_VERSION` |
-| PLAN-20 | After a plan is applied, Meals shows a dismissible "What changed" card: the AI's one-line reason plus a diff (targets, meals added/removed, per-meal kcal, groceries, training week) and "Undo this change" | P1 | Done | FE `planChangeCard`, `lastPlanChange`; `src/lib/plandiff.js` + unit tests |
+| PLAN-19 | Plan generation is attributed to a prompt version (`the-cut-plan-v3`; grocery and prep are no longer part of the plan prompt) | P2 | Done | EF `plan.ts` `PROMPT_VERSION` |
+| PLAN-20 | After a plan is applied, Meals shows a dismissible "What changed" card: the AI's one-line reason plus a diff (targets, meals added/removed, per-meal kcal, training week) and "Undo this change" | P1 | Done | FE `planChangeCard`, `lastPlanChange`; `src/lib/plandiff.js` + unit tests |
 | PLAN-21 | Generation/refine shows progress that survives tab changes: shimmering button and a floating status pill with rotating messages; the user stays on the tab they moved to | P2 | Done | FE `setAIProgress`, `#aiProg` |
 | PLAN-22 | Plan page is input only: status card (active plan, draft waiting, undo), collapsed "Your details" with Edit, compact refine box | P1 | Done | FE `aiPlannerPage`, `aiPlanStatusCard`, `foldCard` |
 | PLAN-23 | Generate and Refine apply the plan immediately (no review step); Undo toast (9 s) restores the previous plan | P1 | Done | FE `saveAIDraft` → `applyAIPlan({auto:true})`, `toastUndo` |
@@ -159,7 +159,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 | ID | Requirement | Pri | Status | Evidence |
 |---|---|---|---|---|
-| AISVC-01 | A single JWT-protected endpoint serves all AI actions: `generate`, `refine`, `review`, `assess`, `chat`, `workout_review`; unknown actions return 400 | P0 | Done | EF `the-cut-ai` (`verify_jwt` true) |
+| AISVC-01 | A single JWT-protected endpoint serves all AI actions: `generate`, `refine`, `review`, `assess`, `chat`, `workout_review`, `lists`; unknown actions return 400 | P0 | Done | EF `the-cut-ai` (`verify_jwt` true) |
 | AISVC-02 | The provider is swappable by secrets only (any OpenAI-compatible endpoint) | P1 | Done | EF `llm.ts`; `docs/ARCHITECTURE.md` |
 | AISVC-03 | AWS Bedrock is supported without an API key through SigV4 request signing | P1 | Done | EF `llm.ts` (`AwsClient`, service `bedrock`) |
 | AISVC-04 | Optional fallback provider is tried after the primary fails | P2 | Done | EF `llm.ts` (`LLM_FALLBACK_*`) |
@@ -167,6 +167,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | AISVC-06 | Only aggregated data is sent to the LLM provider | P0 | Done | `docs/ARCHITECTURE.md`; EF summary builders |
 | AISVC-07 | The caller's own data is read through their JWT, so database RLS applies to every AI read | P0 | Done | EF `createClient` with user's Authorization header |
 | AISVC-08 | AI request failures surface as a readable error toast or dialog | P1 | Done | FE `callAIPlanner`, `fail` |
+| AISVC-09 | The `lists` action builds the week's grocery list and daily prep from the user's live meals. It validates the request (Sunday week start, today inside that week), skips the model when the live meals are unchanged since the last build (`{status:"current"}`), makes at most two model calls, and writes only through the `replace_generated_lists` RPC. Prompt version `the-cut-lists-v1` | P0 | Done | EF `lists()`, `lists.ts` (`normalizeLists`, `checkWindow`); DB `replace_generated_lists`; unit + DB tests |
 
 ### 4.4 Coach (COACH)
 
@@ -245,13 +246,21 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 ### 4.8 Prep & Grocery (PREP)
 
+Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; content is AI-generated and dynamic and follows the live plan.**
+
 | ID | Requirement | Pri | Status | Evidence |
 |---|---|---|---|---|
-| PREP-01 | Weekly grocery list (from the applied plan) grouped by Protein / Dairy / Produce / Pantry with per-category counts | P1 | Done | FE `prepV3`, `loadGroceries`; DB `grocery_items` |
+| PREP-01 | Weekly grocery list built by the AI from the user's live meals, grouped under categories the AI chooses; category headers are shown in sentence case ("Protein", "Fresh fruit"; an empty category shows "Other") with per-category counts | P1 | Done | FE `prepV3`, `catLabel`; EF `lists.ts` `categoryLabel`; DB `grocery_items` |
 | PREP-02 | Tick items purchased; add an item with quantity; remove an item | P1 | Done | FE `addGroceryV2`, `updateGrocery`, `deleteRow` |
-| PREP-03 | Daily meal-prep tasks: tick, add, remove | P1 | Done | FE `addPrep`, `updatePrep`, `deleteRow`; DB `prep_tasks` |
+| PREP-03 | Daily meal-prep tasks built by the AI per day: tick, add, remove | P1 | Done | FE `addPrep`, `updatePrep`, `deleteRow`; DB `prep_tasks` |
 | PREP-04 | Segmented switch between Groceries and Meal prep with done counts | P2 | Done | FE `prepView` |
-| PREP-05 | Items added manually default to the Produce category | P2 | Done | FE hidden `category` field |
+| PREP-05 | Items added by hand carry no category the user must pick; the AI-chosen categories apply to its own rows and a hand-added row shows under "Other" | P2 | Done | FE `addGroceryV2`, `catLabel` |
+| PREP-06 | Lists are built automatically when Prep & Grocery is opened and the live meals differ from what the week's lists were built from. A "Regenerate" button forces a rebuild; a failed build shows an error with "Try again" and never leaves a half-written list | P0 | Done | FE `ensureLists`, `[data-lists-regen]`; EF `lists`; DB `list_generations` (week, plan hash, plan version) |
+| PREP-07 | The lists follow the plan. After a plan is applied (refine, fresh plan, restore, undo) or a meal is added, the stale AI-built rows are cleared and rebuilt from the new meals. Example: switching a plan from non-veg to veg removes chicken from groceries and prep | P0 | Done | FE `markListsStale` (`applyAIPlan`, Add-a-meal); DB `apply_ai_plan_version` clears AI rows and resets the week's plan hash |
+| PREP-08 | Weeks run Sunday to Saturday (`weekStart` returns the Sunday; the database rejects a non-Sunday week) | P0 | Done | FE `src/lib/format.js` `weekStart`; DB `replace_generated_lists`; unit tests |
+| PREP-09 | A new week gets groceries for the whole week and prep from today. A plan change mid-week rebuilds groceries and prep for the rest of the week only (today to Saturday); next week resets to a whole week | P0 | Done | EF `lists` (`new_week` / `rest_of_week`), `datesFrom`; DB `replace_generated_lists` (`p_from`); DB tests |
+| PREP-10 | A rebuild never touches the user's work: ticked or bought AI rows become the user's own and stay, hand-added rows stay, past days are untouched. Only unticked AI rows are replaced | P0 | Done | DB `replace_generated_lists`, `source_version_id`; `tests/db/lists.test.mjs` |
+| PREP-11 | No default nutrition targets are seeded for a new account (calorie, protein and water targets start empty and come from the AI plan) | P1 | Done | FE `src/shell.js`; DB migration `20261112_ai_lists_sunday_weeks` (columns nullable, defaults dropped) |
 
 ### 4.9 Account, data export and deletion (ACCT)
 
@@ -315,12 +324,13 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 | ID | Requirement | Pri | Status | Evidence |
 |---|---|---|---|---|
-| QA-01 | Unit tests for pure logic, plan validation and workout-review validation (36 tests, all passing) | P1 | Done | `tests/unit/*.test.mjs`; `npm run test:unit` |
+| QA-01 | Unit tests for pure logic, plan validation and workout-review validation (44 tests, all passing) | P1 | Done | `tests/unit/*.test.mjs`; `npm run test:unit` |
 | QA-02 | API/RLS tests: cross-user read/update/delete/insert/reassign blocked, anon sees nothing, plan RPC and storage isolated, edge functions reject bad calls; includes `workout_feedback` and `workout_reviews` (67 tests collected) | P1 | Partial | `tests/api/`; expected results confirmed manually against production; the suite itself could not be run from the workspace (no network) (OI-13) |
 | QA-03 | Browser tests (assets, headers, sign-in, plan gate, Account page, delete-dialog guard and signed-in flows against a faked backend) | P1 | Done | `tests/e2e/` (real backend, needs credentials) plus `tests/ui/` (mocked backend, no credentials, runs in `npm run check`): every live screen, sign-in, meals, weight, prep, workout logging, plan generate/refine/apply/undo/restore, coach chat, account delete guard, CSP cleanliness |
 | QA-04 | CI workflow runs lint, typecheck, unit, API and e2e | P1 | Skipped | Removed: GitHub Actions needs a billing method. Run `npm run check` locally |
 | QA-05 | Lint (`no-undef`, redeclare, unreachable) over `src/` and strict JSDoc typecheck over `src/lib/` | P2 | Done | `eslint.config.mjs`, `jsconfig.json`; `npm run check` |
 | QA-06 | Testing guide and throwaway-user procedure | P2 | Done | `docs/TESTING.md` |
+| QA-07 | In-process Postgres tests run every migration in production order: plan apply/undo (7 tests) and AI-built lists (6 tests: Sunday weeks, whole-week vs rest-of-week, ticked rows kept, stale rows cleared on plan change) | P1 | Done | `tests/db/`; `npm run test:db` |
 
 ---
 
@@ -330,7 +340,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 | ID | Requirement | Pri | Status | Evidence |
 |---|---|---|---|---|
-| SEC-01 | Row-level security enabled on all 26 public tables; users can only read/write their own rows (40 policies) | P0 | Done | DB `pg_policies`, `relrowsecurity` |
+| SEC-01 | Row-level security enabled on all 27 public tables; users can only read/write their own rows (41 policies) | P0 | Done | DB `pg_policies`, `relrowsecurity` |
 | SEC-02 | Progress-photo bucket is private; storage policies limit read/insert/update/delete to the owner | P0 | Done | DB `storage.buckets`, `progress_photos_*_own` |
 | SEC-03 | Frontend holds only the publishable Supabase key; service-role key exists only inside edge functions | P0 | Done | Vercel env; EF `delete-account` |
 | SEC-04 | AI and delete-account endpoints require a valid JWT | P0 | Done | `verify_jwt` true on both |
@@ -457,7 +467,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 
 ## 7. Data model
 
-### 7.1 Tables (26, all with RLS and `ON DELETE CASCADE` to `auth.users`)
+### 7.1 Tables (27, all with RLS and `ON DELETE CASCADE` to `auth.users`)
 
 | Group | Tables |
 |---|---|
@@ -467,15 +477,16 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | Training | `workout_sessions`, `workout_exercises`, `workout_sets`, `workout_feedback` (per-exercise rating, issue tags, note), `workout_reviews` (AI analysis plus exact before/after training week, for Undo) |
 | Body | `body_measurements`, `progress_photos` |
 | Habits | `water_logs`, `daily_checkins`, `daily_activity` |
-| Shopping & prep | `grocery_items`, `prep_tasks` |
+| Shopping & prep | `grocery_items`, `prep_tasks`, `list_generations` (which live-meals hash each week's AI lists were built from; derived bookkeeping, not part of the export) |
 | Notifications | `reminders`, `push_subscriptions`, `push_notification_deliveries` |
 | Coach | `agent_insights`, `agent_baseline` |
 
-### 7.2 Functions (17 in `public`)
+### 7.2 Functions (18 in `public`)
 
 | Purpose | Functions |
 |---|---|
 | Plans | `apply_ai_plan_version`, `save_training_week` |
+| Lists | `replace_generated_lists` |
 | Coach engine | `agent_scan`, `agent_scan_me`, `agent_put`, `agent_put_ai`, `agent_clear`, `agent_metrics`, `agent_plan_state`, `agent_state_for`, `agent_week_summary`, `agent_ack_state`, `agent_trigger`, `agent_plan_trigger` |
 | Platform | `handle_new_user`, `set_updated_at`, `get_the_cut_push_config` |
 
@@ -526,6 +537,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | Top bar title (`57a8b35`) | Logo mark and page title on non-date tabs |
 | Plan feedback (`f8db945`) | What-changed card, global AI progress pill, bell dropdown, button spacing |
 | Dynamic workouts (`b5c1e86`) | Per-exercise feedback popup, AI session review (`workout_review`, `workout.ts`), auto-applied training-week changes with Undo, Refine box persistence; migration `20261110_workout_feedback` |
+| AI-built lists (`20261112`) | Grocery and prep generated by the AI from the live meals (`lists` action, `lists.ts`, `list_generations`), Sunday weeks, rest-of-week rebuild on mid-week plan change, sentence-case category headers, seeded defaults removed; edge function v54 |
 
 ---
 
@@ -551,6 +563,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | OI-16 | ~~Split `app.js`~~ Done in v1.5: 13 modules plus a shared `S` state object (`src/state.js`), formatted with Prettier | Closed | P2 |
 | OI-17 | ~~Remove inline `style=`~~ Done in v1.5: zero inline styles, CSP `style-src 'self'`, guarded by a unit test and a runtime CSP test | Closed | P2 |
 | OI-19 | Apply migration `20261111_plan_undo_complete.sql` to production (Undo/Restore of older plans and full grocery/prep rollback, KL-11). Tested on an in-process Postgres (`npm run test:db`). **Closed 2026-11-10:** applied to production as `plan_undo_complete`; columns, indexes, FKs and grants verified; security advisors show only the intentional SECURITY DEFINER warnings | Owner approval | Closed |
+| OI-20 | Verify the `lists` action against the real LLM in a signed-in browser: open Prep, switch a plan to vegetarian and confirm no meat remains, press Regenerate (shipped with unit, DB and mocked-UI tests only; the build sandbox cannot reach the LLM) | Manual test | P1 |
 | OI-18 | Verify `workout_review` against the real LLM and the feedback popup, Undo and Refine-box persistence in a signed-in browser (shipped with DB, RLS and unit-level checks only; the build sandbox cannot reach Supabase) | Manual test | P1 |
 
 ## 11. Skipped items (paid plan or manual action)
@@ -586,6 +599,8 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | KL-11 | Resolved 2026-11-10: the plan-undo migration is applied, so Undo of any older plan works and plan-derived groceries/prep tasks are rolled back with it. |
 | KL-12 | Auto-applied plans skip the old review step; safety concerns now surface through the Coach (and the AI's own summary on the What-changed card). |
 | KL-13 | Workout reviews change the recurring weekly training week of the active plan, not a dated calendar; Undo is offered only while that week is unchanged since the review. |
+| KL-14 | Between the migration and the front-end deploy on 2026-11-10 the old client (Monday weeks) briefly coexisted with Sunday-keyed rows; existing unticked lists were cleared once and rebuilt. Ticked rows from before that were kept. |
+| KL-15 | The grocery list is rebuilt only when the live meals change or the user presses Regenerate; changes to profile fields that do not alter the meals (for example budget) do not trigger a rebuild. |
 | KL-08 | Nutrition and training output are AI estimates, not medical advice. |
 | KL-09 | The coach rules for water and check-ins only fire on existing data, because there is no logging screen for them. |
 
@@ -601,3 +616,4 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | 1.3 | 2026-11-10 | Dynamic workouts: WORK-17 to 20 and US-12; PLAN-24 (Refine box persistence); `workout_review` action (AISVC-01); tables 24 → 26 and policies 33 → 40 (SEC-01, 7.1); export covers 24 tables; edge function v53; QA counts (36 unit, 67 API); OI-18, KL-13 |
 | 1.4 | 2026-11-10 | Product name changed from "THE CUT 2.0" to "THE CUT" (first release): app title, manifest, export `product`, README, LICENSE, docs, SQL comments |
 | 1.5 | 2026-11-11 | Dead code for features not in the UI deleted (RM-07); `app.js` split into modules with shared state; monkey patches replaced; Add-a-meal modal form; inline styles and `unsafe-inline` removed; CSS pruned; Lucide icons, sentence-case labels, data-driven sidebar summary; Coach chat visibility bug fixed; SECURITY DEFINER audit (SEC-07); mocked-backend UI tests and in-process Postgres tests; migration for complete plan undo written and applied to production (OI-19) |
+| 1.6 | 2026-11-10 | Grocery and prep are AI-generated from the live plan and follow it (PREP-01 to 11, AISVC-09, `lists` action, edge function v54, `the-cut-plan-v3` / `the-cut-lists-v1`); weeks start on Sunday; mid-week plan changes rebuild the rest of the week only; sentence-case category headers; seeded default targets removed; `list_generations` table and `replace_generated_lists` RPC (tables 27, functions 18, policies 41); unit 44, db 14, ui 27; OI-20, KL-14/15; principle: nothing hard-coded |

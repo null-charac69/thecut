@@ -86,8 +86,29 @@ class Q {
   }
 }
 
+const addD = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+// AI rows (source_version_id set) in scope: ticked ones become the user's own, the rest are deleted.
+function clearAi(rows, u, scope, done) {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i];
+    if (r.user_id !== u || !r.source_version_id || !scope(r)) continue;
+    if (done(r)) r.source_version_id = null; else rows.splice(i, 1);
+  }
+}
+
 // RPCs that mirror the SQL in supabase/migrations (kept small; the SQL itself is covered by tests/db).
 const RPC = {
+  replace_generated_lists({ p_week_start, p_from, p_plan_hash, p_plan_version_id, p_groceries, p_prep }) {
+    const db = F(), T = db.tables, u = db.session.user.id, end = addD(p_week_start, 6);
+    if (p_from < p_week_start || p_from > end) throw new Error('Date is outside the week');
+    clearAi(T.grocery_items, u, (r) => r.week_start === p_week_start, (r) => r.is_purchased);
+    for (const g of p_groceries) if (g.name && !T.grocery_items.some((r) => r.user_id === u && r.week_start === p_week_start && r.name.toLowerCase() === g.name.toLowerCase())) T.grocery_items.push({ id: uid(), user_id: u, week_start: p_week_start, name: g.name, quantity: g.quantity, category: g.category || null, sort_order: T.grocery_items.length, is_purchased: false, source_version_id: p_plan_version_id });
+    clearAi(T.prep_tasks, u, (r) => r.local_date >= p_from && r.local_date <= end, (r) => r.is_completed);
+    for (const d of p_prep) if (d.date >= p_from && d.date <= end) for (const t of d.tasks) if (!T.prep_tasks.some((r) => r.user_id === u && r.local_date === d.date && r.task.toLowerCase() === t.toLowerCase())) T.prep_tasks.push({ id: uid(), user_id: u, local_date: d.date, task: t, sort_order: T.prep_tasks.length, is_completed: false, source_version_id: p_plan_version_id });
+    T.list_generations = (T.list_generations || []).filter((g) => !(g.user_id === u && g.week_start === p_week_start));
+    T.list_generations.push({ user_id: u, week_start: p_week_start, plan_hash: p_plan_hash, plan_version_id: p_plan_version_id, generated_from: p_from });
+    return { groceries_added: p_groceries.length, prep_added: p_prep.length };
+  },
   apply_ai_plan_version({ p_version_id, p_local_date, p_week_start }) {
     const db = F(), T = db.tables, u = db.session.user.id;
     const v = (T.ai_plan_versions || []).find((x) => x.id === p_version_id && x.user_id === u);
@@ -102,19 +123,11 @@ const RPC = {
     });
     const tg = v.plan.targets, s = T.user_settings.find((x) => x.user_id === u);
     Object.assign(s, { calorie_target: tg.calories_kcal, protein_target_g: tg.protein_g, carbs_target_g: tg.carbs_g, fat_target_g: tg.fat_g, fiber_target_g: tg.fibre_g, water_target_ml: tg.water_ml });
-    const swap = (rows, scope, nameOf, listNames, extra) => {
-      const mine = rows.filter((r) => r.user_id === u && scope(r) && r.source_version_id && r.source_version_id !== p_version_id);
-      for (const r of mine) {
-        if (listNames.includes(nameOf(r).toLowerCase())) r.source_version_id = p_version_id;
-        else if (r.is_purchased || r.is_completed) r.source_version_id = null;
-        else rows.splice(rows.indexOf(r), 1);
-      }
-      for (const n of extra) if (!rows.some((r) => r.user_id === u && scope(r) && nameOf(r).toLowerCase() === n.name.toLowerCase())) rows.push({ id: uid(), user_id: u, source_version_id: p_version_id, ...n.row });
-    };
-    const g = (v.plan.grocery_list || []).filter((x) => x.name);
-    swap(T.grocery_items, (r) => r.week_start === p_week_start, (r) => r.name, g.map((x) => x.name.toLowerCase()), g.map((x) => ({ name: x.name, row: { week_start: p_week_start, name: x.name, quantity: x.quantity, category: x.category || 'PRODUCE', sort_order: 0, is_purchased: false } })));
-    const p = (v.plan.prep_tasks || []).filter(Boolean);
-    swap(T.prep_tasks, (r) => r.local_date === p_local_date, (r) => r.task, p.map((x) => x.toLowerCase()), p.map((x) => ({ name: x, row: { local_date: p_local_date, task: x, sort_order: 0, is_completed: false } })));
+    // Clear this plan's AI lists (this week's groceries, prep from today on); ticked rows become the user's own.
+    const end = addD(p_week_start, 6);
+    clearAi(T.grocery_items, u, (r) => r.week_start === p_week_start, (r) => r.is_purchased);
+    clearAi(T.prep_tasks, u, (r) => r.local_date >= p_local_date && r.local_date <= end, (r) => r.is_completed);
+    (T.list_generations || []).filter((g) => g.user_id === u && g.week_start === p_week_start).forEach((g) => (g.plan_hash = ''));
     T.ai_plan_versions.filter((x) => x.user_id === u && x.status === 'active' && x.id !== p_version_id).forEach((x) => (x.status = 'superseded'));
     v.status = 'active'; v.applied_at = new Date().toISOString();
     return { applied: true, meal_templates_created: v.plan.meals.length };
@@ -128,6 +141,7 @@ const RPC = {
 
 export function createClient() {
   const db = F(); const listeners = [];
+  db.runRpc = (name, args) => RPC[name](args); // lets the test's mock of the AI function write like the real one
   const emit = (ev, s) => listeners.forEach((cb) => cb(ev, s));
   db.emit = emit;
   const err = (m) => ({ data: null, error: { message: m } });

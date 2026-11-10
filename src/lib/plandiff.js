@@ -1,8 +1,7 @@
 // Pure plan-to-plan comparison used for the "What changed" card (no DOM, no app state).
 /** @typedef {{name?:string,time?:string,totals?:{calories_kcal?:number,protein_g?:number}}} PMeal */
-/** @typedef {{name?:string}} PGrocery */
 /** @typedef {{day?:string,focus?:string,session_minutes?:number}} PTrain */
-/** @typedef {{targets?:Record<string,number>,meals?:PMeal[],grocery_list?:PGrocery[],training_week?:PTrain[]}} Plan */
+/** @typedef {{targets?:Record<string,number>,meals?:PMeal[],training_week?:PTrain[]}} Plan */
 
 const TARGETS = /** @type {Array<[string,string,string]>} */ ([
   ['calories_kcal', 'Calories', 'kcal'],
@@ -53,18 +52,6 @@ export function diffPlans(prev, next) {
     if (Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) >= 10)
       out.push({ label: String(m.name), detail: `${r(a)} → ${r(b)} kcal` });
   }
-  const ga = added(names(prev.grocery_list), names(next.grocery_list)),
-    gr = added(names(next.grocery_list), names(prev.grocery_list));
-  if (ga.length)
-    out.push({
-      label: 'Groceries added',
-      detail: ga.slice(0, 6).join(', ') + (ga.length > 6 ? ` +${ga.length - 6} more` : ''),
-    });
-  if (gr.length)
-    out.push({
-      label: 'Groceries removed',
-      detail: gr.slice(0, 6).join(', ') + (gr.length > 6 ? ` +${gr.length - 6} more` : ''),
-    });
   const pt = prev.training_week || [],
     nt = next.training_week || [];
   const sig = /** @param {PTrain[]} l */ (l) => l.map((x) => `${x.day}:${x.focus}`).join('|');

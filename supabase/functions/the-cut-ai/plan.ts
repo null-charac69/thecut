@@ -1,7 +1,7 @@
 // Server-side normalisation + safety validation of AI-generated plans.
 // The model proposes; this code decides what is allowed to reach the database.
 
-export const PROMPT_VERSION = "the-cut-plan-v2";
+export const PROMPT_VERSION = "the-cut-plan-v3";
 
 const num = (v: unknown, d = 0): number => {
   const x = typeof v === "string" ? parseFloat(v) : Number(v);
@@ -12,7 +12,6 @@ const str = (v: unknown, max = 300) => (typeof v === "string" ? v.trim().slice(0
 const strArr = (v: unknown, maxItems: number, max = 300) =>
   Array.isArray(v) ? v.map((x) => str(x, max)).filter(Boolean).slice(0, maxItems) : [];
 
-const CATEGORIES = new Set(["PROTEIN", "DAIRY", "PANTRY", "PRODUCE"]);
 const MIN_DAILY_KCAL = 1200;
 const MAX_DAILY_KCAL = 6000;
 
@@ -93,13 +92,6 @@ export function normalizePlan(raw: any): PlanResult {
   };
 
   // deno-lint-ignore no-explicit-any
-  const grocery = (Array.isArray(raw.grocery_list) ? raw.grocery_list : []).slice(0, 40).map((g: any) => {
-    const cat = str(g?.category, 20).toUpperCase();
-    return { name: str(g?.name, 100), quantity: str(g?.quantity, 80), category: CATEGORIES.has(cat) ? cat : "PRODUCE" };
-    // deno-lint-ignore no-explicit-any
-  }).filter((g: any) => g.name);
-
-  // deno-lint-ignore no-explicit-any
   const training = (Array.isArray(raw.training_week) ? raw.training_week : []).slice(0, 7).map((d: any) => ({
     day: str(d?.day, 30),
     focus: str(d?.focus, 100),
@@ -122,8 +114,6 @@ export function normalizePlan(raw: any): PlanResult {
       estimated_daily_cost_inr: Math.round(Math.min(100000, Math.max(0, num(raw.estimated_daily_cost_inr)))),
       targets,
       meals,
-      grocery_list: grocery,
-      prep_tasks: strArr(raw.prep_tasks, 12, 240),
       training_week: training,
     },
     problems: [],

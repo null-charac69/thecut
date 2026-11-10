@@ -19,10 +19,10 @@ export const dateFmt = (
   d,
   opts = /** @type {Intl.DateTimeFormatOptions} */ ({ weekday: 'long', day: 'numeric', month: 'long' })
 ) => new Date(d + 'T12:00:00').toLocaleDateString('en-IN', opts);
-/** Monday of the week containing d. @param {string} d YYYY-MM-DD @returns {string} */
+/** Sunday of the week containing d (weeks run Sunday to Saturday). @param {string} d YYYY-MM-DD @returns {string} */
 export const weekStart = (d) => {
   let x = new Date(d + 'T12:00:00');
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  x.setDate(x.getDate() - x.getDay());
   return x.toISOString().slice(0, 10);
 };
 /** @param {number|string|null|undefined} n @returns {string} */

@@ -1,9 +1,11 @@
 // THE CUT — AI planner/coach edge function (user-triggered, JWT required).
 // Actions: generate, refine, review, assess (judge the user's direct plan edits), chat (tool-using coach),
-// workout_review (analyse a finished session + feedback and propose a revised training week).
+// workout_review (analyse a finished session + feedback and propose a revised training week),
+// lists (build the week's grocery list and daily prep tasks from the user's LIVE meals; skips the AI when nothing changed).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { chatJson, LlmError } from "./llm.ts";
+import { checkWindow, datesFrom, LISTS_PROMPT_VERSION, LISTS_SYSTEM, normalizeLists, weekdayName } from "./lists.ts";
 import { cleanProfile, normalizePlan, PROMPT_VERSION, qualityChecks, validateProfile } from "./plan.ts";
 import { cleanReviewInput, cleanReviewOutput, normalizeWeek, sameWeek, WORKOUT_PROMPT_VERSION, WORKOUT_SYSTEM } from "./workout.ts";
 
@@ -33,8 +35,6 @@ Output ONLY one JSON object with exactly these keys:
 {"title":str,"summary":str,"rationale":str,"assumptions":[str],"safety_notes":[str],"estimated_daily_cost_inr":number,
 "targets":{"calories_kcal":int,"protein_g":num,"carbs_g":num,"fat_g":num,"fibre_g":num,"water_ml":int},
 "meals":[{"name":str,"time":"HH:MM","items":[{"name":str,"quantity":num,"unit":str,"calories_kcal":num,"protein_g":num,"carbs_g":num,"fat_g":num,"fibre_g":num,"preparation":str}]}],
-"grocery_list":[{"name":str,"quantity":str,"category":"PROTEIN"|"DAIRY"|"PANTRY"|"PRODUCE"}],
-"prep_tasks":[str],
 "training_week":[{"day":str,"focus":str,"session_minutes":int,"exercises":[str]}]}
 Use 2 to 6 meals matching the requested meals per day, 3-6 items per meal, one training_week entry per training day (empty if 0 training days). rationale: explain the main decisions and trade-offs concisely. Keep every string short.`;
 
@@ -479,6 +479,88 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
   return reply({ reply: "I ran out of steps on that one. Ask me again in a simpler way.", draft_id: draftId, draft_title: draftTitle, kept });
 }
 
+// Builds the week's grocery list and each day's prep from the user's LIVE meals (their direct edits included).
+// New week (nothing built yet): groceries for the whole week, prep from today. Plan changed mid-week: groceries and
+// prep for the rest of the week only. Ticked items, the user's own items and past days are never touched (the
+// replace_generated_lists RPC enforces that). When nothing changed since the last build, no model call is made.
+// deno-lint-ignore no-explicit-any
+async function lists(sb: Sb, body: any) {
+  const bad = checkWindow(body?.week_start, body?.today);
+  if (bad) return reply({ error: bad }, 400);
+  const weekStart: string = body.week_start, today: string = body.today;
+
+  const live = await liveState(sb);
+  if (!live?.plan_id) return reply({ status: "no_plan" });
+  // deno-lint-ignore no-explicit-any
+  const hash = await sha(JSON.stringify((live.meals ?? []).map((m: any) => [m.name, m.time, m.items])));
+  const { data: gen } = await sb.from("list_generations").select("plan_hash").eq("week_start", weekStart).maybeSingle();
+  if (body?.force !== true && gen?.plan_hash === hash) return reply({ status: "current" });
+
+  const mode = gen ? "rest_of_week" : "new_week";
+  const prepDates = datesFrom(weekStart, today);
+  const groceryDates = mode === "new_week" ? datesFrom(weekStart, weekStart) : prepDates;
+
+  const [{ data: tpl }, { data: have }, active] = await Promise.all([
+    sb.from("meal_templates").select("name,planned_time,meal_template_items(food_name_snapshot,unit,sort_order)").eq("is_active", true).order("sort_order"),
+    sb.from("grocery_items").select("name").eq("week_start", weekStart).or("is_purchased.eq.true,source_version_id.is.null").limit(80),
+    activeInputs(sb),
+  ]);
+  // deno-lint-ignore no-explicit-any
+  const meals = ((tpl ?? []) as any[]).map((t) => ({
+    name: t.name,
+    time: String(t.planned_time ?? "").slice(0, 5),
+    // deno-lint-ignore no-explicit-any
+    items: ((t.meal_template_items ?? []) as any[])
+      // deno-lint-ignore no-explicit-any
+      .filter((i: any) => i.food_name_snapshot !== "__plan_total__")
+      // deno-lint-ignore no-explicit-any
+      .sort((a: any, b: any) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+      // deno-lint-ignore no-explicit-any
+      .map((i: any) => ({ name: i.food_name_snapshot, amount: i.unit })),
+  }));
+  if (!meals.length) return reply({ status: "no_plan" });
+
+  const payload = {
+    person: active?.inputs ?? {},
+    meals_per_day: meals,
+    grocery_days: groceryDates.map((d) => ({ date: d, weekday: weekdayName(d) })),
+    prep_dates: prepDates.map((d) => ({ date: d, weekday: weekdayName(d) })),
+    already_have: ((have ?? []) as { name: string }[]).map((x) => x.name),
+  };
+  const userPrompt = `<user_data>\n${JSON.stringify(payload).slice(0, 9000)}\n</user_data>\nWrite the grocery list for grocery_days and the prep tasks for prep_dates.`;
+
+  try {
+    let attempt = await chatJson({ system: LISTS_SYSTEM, user: userPrompt, maxTokens: 3500, temperature: 0.2 });
+    let res = normalizeLists(attempt.json, prepDates);
+    if (res.problems.length) {
+      attempt = await chatJson({
+        system: LISTS_SYSTEM,
+        user: userPrompt + `\nYour previous answer was rejected: ${res.problems.join(" ")} Return a corrected JSON object.`,
+        maxTokens: 3500,
+        temperature: 0.2,
+      });
+      res = normalizeLists(attempt.json, prepDates);
+    }
+    if (res.problems.length) {
+      console.error("Lists rejected", res.problems);
+      return reply({ error: "The AI produced an unusable list. Please try again." }, 422);
+    }
+    const { data, error } = await sb.rpc("replace_generated_lists", {
+      p_week_start: weekStart, p_from: today, p_plan_hash: hash, p_plan_version_id: live.plan_id,
+      p_groceries: res.groceries, p_prep: res.prep,
+    });
+    if (error) {
+      console.error("replace_generated_lists", error.message);
+      return reply({ error: "Could not save your lists. Please try again." }, 500);
+    }
+    return reply({ status: "generated", mode, ...data, model: attempt.model, prompt_version: LISTS_PROMPT_VERSION });
+  } catch (e) {
+    if (e instanceof LlmError) return reply({ error: e.message }, e.status);
+    console.error("lists failure", String(e));
+    return reply({ error: "AI planner is temporarily unavailable." }, 502);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ error: "Method not allowed." }, 405);
@@ -509,6 +591,7 @@ Deno.serve(async (req: Request) => {
   if (action === "assess") return await assess(supabase);
   if (action === "chat") return await chat(supabase, userData.user.id, body?.messages);
   if (action === "workout_review") return await workoutReview(supabase, body);
+  if (action === "lists") return await lists(supabase, body);
   if (action !== "generate" && action !== "refine") return reply({ error: "Unknown action." }, 400);
 
   const profileError = validateProfile(body?.profile);

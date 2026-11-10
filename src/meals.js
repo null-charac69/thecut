@@ -3,6 +3,7 @@ import { S } from './state.js';
 import { q, supabase } from './client.js';
 import { scheduleAssess } from './coach.js';
 import { planChangeCard } from './plan.js';
+import { markListsStale } from './prep.js';
 import { after, bar3, card, needsPlanCard, pageHead, render } from './shell.js';
 import { fail, toast, uiConfirm, uiForm } from './ui.js';
 
@@ -197,6 +198,7 @@ async function addMealTemplateCore() {
     },
   });
   if (!saved) return;
+  markListsStale();
   try {
     S.templates = await q(
       supabase
