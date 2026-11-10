@@ -99,8 +99,8 @@ function fbRender() {
     n = S.fb.exs.length,
     last = S.fb.i === n - 1;
   box.innerHTML = `<div class="eyebrow">HOW DID IT GO? · ${S.fb.i + 1} OF ${n}</div><h2>${esc(e.name)}</h2><p class="muted small">${esc(fbSetsText(e.sets))}</p>
- <label class="muted small">HOW DID THIS FEEL?</label><div class="fb-chips" id="fbRate">${FB_RATINGS.map(([k, l]) => `<button type="button" class="chip ${e.rating === k ? 'on' : ''}" data-fbrate="${k}" aria-pressed="${e.rating === k}">${l}</button>`).join('')}</div>
- <label class="muted small">ANY ISSUES?</label><div class="fb-chips" id="fbIssues">${FB_ISSUES.map(([k, l]) => `<button type="button" class="chip ${e.issues.includes(k) ? 'on' : ''}" data-fbissue="${k}" aria-pressed="${e.issues.includes(k)}">${l}</button>`).join('')}</div>
+ <label class="muted small">How did this feel?</label><div class="fb-chips" id="fbRate">${FB_RATINGS.map(([k, l]) => `<button type="button" class="chip ${e.rating === k ? 'on' : ''}" data-fbrate="${k}" aria-pressed="${e.rating === k}">${l}</button>`).join('')}</div>
+ <label class="muted small">Any issues?</label><div class="fb-chips" id="fbIssues">${FB_ISSUES.map(([k, l]) => `<button type="button" class="chip ${e.issues.includes(k) ? 'on' : ''}" data-fbissue="${k}" aria-pressed="${e.issues.includes(k)}">${l}</button>`).join('')}</div>
  <textarea id="fbNote" rows="2" maxlength="300" placeholder="Anything else? e.g. left shoulder pinched on the way down (optional)">${esc(e.note)}</textarea>
  <div class="row u-mt12"><button class="btn ghost" id="fbBack" ${S.fb.i ? '' : 'disabled'}>Back</button><button class="btn primary grow" id="fbNext">${last ? 'Analyze my session' : 'Next exercise'}</button></div>
  <button class="btn ghost fb-skip" id="fbSkip">Skip the rest and analyze</button>`;
@@ -159,7 +159,7 @@ async function fbRun() {
   const box = document.querySelector('#fbModal .modal');
   if (box)
     box.innerHTML =
-      '<div class="eyebrow">COACH REVIEW</div><h2>Analyzing your session…</h2><p class="muted small">Reading your sets and feedback, then adjusting your plan if it needs it.</p><div class="u-my18"><span class="loader"></span></div>';
+      '<div class="eyebrow">Coach review</div><h2>Analyzing your session…</h2><p class="muted small">Reading your sets and feedback, then adjusting your plan if it needs it.</p><div class="u-my18"><span class="loader"></span></div>';
   try {
     S.aiBusy = true;
     setAIProgress('workout');
@@ -275,7 +275,7 @@ function fbShowResult(r) {
     return;
   }
   box.classList.add('fb-result');
-  box.innerHTML = `<div class="eyebrow">COACH REVIEW</div><h2>${esc(r.headline)}</h2>${wkReviewBody(r)}<div class="row u-mt14">${wkReviewUndoable(r) ? '<button class="btn ghost" id="fbUndo">Undo change</button>' : ''}<button class="btn primary grow" id="fbDone">Done</button></div>`;
+  box.innerHTML = `<div class="eyebrow">Coach review</div><h2>${esc(r.headline)}</h2>${wkReviewBody(r)}<div class="row u-mt14">${wkReviewUndoable(r) ? '<button class="btn ghost" id="fbUndo">Undo change</button>' : ''}<button class="btn primary grow" id="fbDone">Done</button></div>`;
   $('#fbDone').onclick = async () => {
     fbClose();
     await render();
@@ -288,7 +288,7 @@ function fbShowResult(r) {
 function fbShowError(err) {
   const box = document.querySelector('#fbModal .modal');
   if (!box) return;
-  box.innerHTML = `<div class="eyebrow">COACH REVIEW</div><h2>Couldn’t analyze that</h2><p class="muted">${esc(friendlyError(err).body.replace(/<[^>]+>/g, '') || err?.message || 'Something went wrong.')} Your workout is saved. Your feedback is kept, so you can retry.</p><div class="row u-mt14"><button class="btn ghost" id="fbClose">Close</button><button class="btn primary grow" id="fbRetry">Try again</button></div>`;
+  box.innerHTML = `<div class="eyebrow">Coach review</div><h2>Couldn’t analyze that</h2><p class="muted">${esc(friendlyError(err).body.replace(/<[^>]+>/g, '') || err?.message || 'Something went wrong.')} Your workout is saved. Your feedback is kept, so you can retry.</p><div class="row u-mt14"><button class="btn ghost" id="fbClose">Close</button><button class="btn primary grow" id="fbRetry">Try again</button></div>`;
   $('#fbClose').onclick = async () => {
     fbClose();
     await render();

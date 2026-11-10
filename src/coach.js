@@ -130,16 +130,16 @@ function refreshCoachDom() {
 export function coachPanel(full) {
   if (!S.insightsEnabled && !S.coachReview)
     return full
-      ? `<section class="card coach" id="coach"><div class="eyebrow">YOUR COACH</div><p class="muted small">The coach feed is not enabled on this environment yet.</p></section>`
+      ? `<section class="card coach" id="coach"><div class="eyebrow">Your coach</div><p class="muted small">The coach feed is not enabled on this environment yet.</p></section>`
       : '';
   const list = S.insights.filter((i) => !i.dismissed_at).slice(0, full ? 8 : 3);
   const rows = list.map(insightRow).join('');
   const empty =
-    '<p class="muted small u-mt10">Nothing flagged right now. As you log meals, workouts, water, check-ins and weight, I watch the trends and speak up when something drifts. Days with no logs count as unknown, never as zero.</p>';
+    '<p class="muted small u-mt10">Nothing flagged right now. As you log meals, workouts and weight, I watch the trends and speak up when something drifts. Days with no logs count as unknown, never as zero.</p>';
   const rv = S.coachReview
     ? `<div class="coach-review"><strong>${esc(S.coachReview.headline || 'Weekly review')}</strong><p>${esc(S.coachReview.summary || '')}</p>${(S.coachReview.suggestions || []).map((x) => `<p>• ${esc(x)}</p>`).join('')}${S.coachReview.should_refine && getAIBasePlan() ? '<p><button class="btn" id="refineFromReview">Draft a plan update from this</button></p>' : ''}</div>`
     : '';
-  return `<section class="card coach" id="coach"><div class="ai-plan-head"><div><div class="eyebrow">YOUR COACH · WATCHING YOUR DATA LIVE</div><h2 class="u-m4-0-0">What I noticed</h2></div>${full && getAIBasePlan() ? '<button class="btn primary" id="reviewWeek">Review my week</button>' : ''}</div>${rv}${rows || (rv ? '' : empty)}${full && getAIBasePlan() ? coachChatHtml() : ''}</section>`;
+  return `<section class="card coach" id="coach"><div class="ai-plan-head"><div><div class="eyebrow">Your coach · Watching your data live</div><h2 class="u-m4-0-0">What I noticed</h2></div>${full && getAIBasePlan() ? '<button class="btn primary" id="reviewWeek">Review my week</button>' : ''}</div>${rv}${rows || (rv ? '' : empty)}${full && getAIBasePlan() ? coachChatHtml() : ''}</section>`;
 }
 
 async function markInsightsRead() {
@@ -249,7 +249,7 @@ function coachChatHtml() {
         `<div class="chat-msg ${m.role}"><b>${m.role === 'user' ? 'You' : 'Coach'}</b><p>${esc(m.content)}</p>${m.draft_id ? `<p><button class="btn small primary" data-open-draft="${esc(m.draft_id)}">Review the draft plan</button></p>` : ''}</div>`
     )
     .join('');
-  return `<div class="coach-chat" id="coachChat"><div class="eyebrow u-mt14">ASK YOUR COACH</div>${msgs}<form id="coachChatForm" class="chat-form"><input name="msg" placeholder="Ask about your plan, your week, or tell me what you want to change…" maxlength="1500" autocomplete="off" ${S.coachChatBusy ? 'disabled' : ''}/><button class="btn primary small" ${S.coachChatBusy ? 'disabled' : ''}>${S.coachChatBusy ? 'Thinking…' : 'Send'}</button></form></div>`;
+  return `<div class="coach-chat" id="coachChat"><div class="eyebrow u-mt14">Ask your coach</div>${msgs}<form id="coachChatForm" class="chat-form"><input name="msg" placeholder="Ask about your plan, your week, or tell me what you want to change…" maxlength="1500" autocomplete="off" ${S.coachChatBusy ? 'disabled' : ''}/><button class="btn primary small" ${S.coachChatBusy ? 'disabled' : ''}>${S.coachChatBusy ? 'Thinking…' : 'Send'}</button></form></div>`;
 }
 
 export function scheduleAssess(delay = 20000) {

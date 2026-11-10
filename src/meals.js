@@ -64,7 +64,7 @@ function mealPlanTotals() {
     );
 }
 
-function totals() {
+export function totals() {
   let x = mealPlanTotals();
   return {
     k: x.k + S.day.entries.reduce((s, e) => s + Number(e.calories_kcal || 0), 0),
@@ -265,12 +265,12 @@ export async function addMealTemplate(...a) {
 /* ---------- Meals ---------- */
 export function mealsV3() {
   if (!S.aiActivePlan)
-    return pageHead('DIET', 'Meals', 'Your daily meals, from your plan.') + needsPlanCard('logging meals');
+    return pageHead('Diet', 'Meals', 'Your daily meals, from your plan.') + needsPlanCard('logging meals');
   const t = totals(),
     tg = S.aiActivePlan.plan?.targets || {};
-  return `${pageHead('DIET · ' + dateFmt(S.date), 'Meals', 'Tick each meal as you eat it. Log anything extra below.')}${planChangeCard()}
+  return `${pageHead('Diet · ' + dateFmt(S.date), 'Meals', 'Tick each meal as you eat it. Log anything extra below.')}${planChangeCard()}
  <div class="mpage"><div class="grid g2 m-top">${card('Today vs your plan', bar3('Calories', t.k, tg.calories_kcal, 'kcal') + bar3('Protein', t.p, tg.protein_g, 'g'))}
- ${card('Add something extra', `<form id="foodForm" class="formgrid"><div class="field full"><label>WHAT DID YOU EAT?</label><input name="food_name_snapshot" required placeholder="e.g. protein shake"/></div><div class="field"><label>CALORIES</label><input name="calories_kcal" type="number" min="0" step="0.1" inputmode="decimal" value="" required/></div><div class="field"><label>PROTEIN (G)</label><input name="protein_g" type="number" min="0" step="0.1" inputmode="decimal" value="0"/></div><input type="hidden" name="quantity" value="1"/><input type="hidden" name="unit" value="serving"/><input type="hidden" name="carbs_g" value="0"/><input type="hidden" name="fat_g" value="0"/><input type="hidden" name="fiber_g" value="0"/><button class="btn primary full">Add</button></form>`)}</div>
+ ${card('Add something extra', `<form id="foodForm" class="formgrid"><div class="field full"><label>What did you eat?</label><input name="food_name_snapshot" required placeholder="e.g. protein shake"/></div><div class="field"><label>Calories</label><input name="calories_kcal" type="number" min="0" step="0.1" inputmode="decimal" value="" required/></div><div class="field"><label>Protein (g)</label><input name="protein_g" type="number" min="0" step="0.1" inputmode="decimal" value="0"/></div><input type="hidden" name="quantity" value="1"/><input type="hidden" name="unit" value="serving"/><input type="hidden" name="carbs_g" value="0"/><input type="hidden" name="fat_g" value="0"/><input type="hidden" name="fiber_g" value="0"/><button class="btn primary full">Add</button></form>`)}</div>
  <div class="m-meals u-mt16">${card('Your meals', mealRows() + `<div class="row wrap u-mt12"><button class="btn" id="addMealTemplate">+ Add a meal</button></div>`)}</div>
  ${S.day.entries.length ? `<div class="m-extras u-mt16">${card('Extras logged', S.day.entries.map((e) => `<div class="listitem"><div class="grow"><strong>${esc(e.food_name_snapshot)}</strong><small>${fmt(e.calories_kcal)} kcal · ${fmt(e.protein_g)} g protein</small></div><button class="btn sm danger" data-delfood="${e.id}">Delete</button></div>`).join(''))}</div>` : ''}</div>`;
 }

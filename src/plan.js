@@ -60,9 +60,9 @@ function aiPlanStatusCard() {
   };
   let h = '';
   if (draft)
-    h += `<section class="card plan-now"><div class="eyebrow">DRAFT WAITING</div><h2>${esc(draft.title)}</h2><p class="muted small">${tg(draft)}</p><button class="btn primary" data-ai-apply="${draft.id}">Apply to my workspace</button></section>`;
+    h += `<section class="card plan-now"><div class="eyebrow">Draft waiting</div><h2>${esc(draft.title)}</h2><p class="muted small">${tg(draft)}</p><button class="btn primary" data-ai-apply="${draft.id}">Apply to my workspace</button></section>`;
   if (act)
-    h += `<section class="card plan-now"><div class="eyebrow">ACTIVE PLAN</div><h2>${esc(act.title)}</h2><p class="muted small">${tg(act)}</p><div class="row wrap"><button class="btn" data-goto="meals">See meals</button>${prev ? `<button class="btn ghost" data-ai-restore="${prev.id}">Undo last change</button>` : ''}</div></section>`;
+    h += `<section class="card plan-now"><div class="eyebrow">Active plan</div><h2>${esc(act.title)}</h2><p class="muted small">${tg(act)}</p><div class="row wrap"><button class="btn" data-goto="meals">See meals</button>${prev ? `<button class="btn ghost" data-ai-restore="${prev.id}">Undo last change</button>` : ''}</div></section>`;
   return h;
 }
 
@@ -77,13 +77,13 @@ export function aiPlannerPage() {
         a.map(([x, y]) => `<option value="${x}" ${selected === String(x) ? 'selected' : ''}>${y}</option>`).join('')
       );
     };
-  return `${pageHead('PERSONALIZED PLANNING · AI ASSISTANT', 'AI Planner', 'Tell the AI about you. Your plan lands in Meals, Workout and Prep.')}
+  return `${pageHead('Personalized planning · AI assistant', 'AI Planner', 'Tell the AI about you. Your plan lands in Meals, Workout and Prep.')}
  <div class="notice u-mb13">Estimates only, not medical nutrition therapy. Every new plan applies straight away. You can undo it.</div>
  ${aiPlanStatusCard()}
  <div class="ai-page"><div class="grid g2 ai-forms">${(r ? foldCard : card)(
    'Your details',
    `<form id="aiIntakeForm" class="ai-intake-grid">
- <div class="ai-section-title ai-wide">01 · Body profile and goal</div><div class="field"><label>AGE (18+)</label><input name="age_years" type="number" min="18" max="100" required value="${v('age_years')}" placeholder="Years"/></div><div class="field"><label>SEX FOR ENERGY ESTIMATE</label><select name="sex">${opts(
+ <div class="ai-section-title ai-wide">01 · Body profile and goal</div><div class="field"><label>Age (18+)</label><input name="age_years" type="number" min="18" max="100" required value="${v('age_years')}" placeholder="Years"/></div><div class="field"><label>Sex for energy estimate</label><select name="sex">${opts(
    'sex',
    [
      ['prefer_not_to_say', 'Prefer not to say'],
@@ -91,8 +91,8 @@ export function aiPlannerPage() {
      ['female', 'Female'],
    ]
  )}</select></div>
- <div class="field"><label>HEIGHT (CM)</label><input name="height_cm" type="number" min="120" max="230" step="0.1" required value="${v('height_cm')}" placeholder="cm"/></div><div class="field"><label>WEIGHT (KG)</label><input name="weight_kg" type="number" min="30" max="350" step="0.1" required value="${v('weight_kg')}" placeholder="kg"/></div>
- <div class="field"><label>TARGET WEIGHT (KG)</label><input name="target_weight_kg" type="number" min="30" max="350" step="0.1" value="${v('target_weight_kg')}" placeholder="Optional"/></div><div class="field"><label>GOAL</label><select name="goal" required>${opts(
+ <div class="field"><label>Height (cm)</label><input name="height_cm" type="number" min="120" max="230" step="0.1" required value="${v('height_cm')}" placeholder="cm"/></div><div class="field"><label>Weight (kg)</label><input name="weight_kg" type="number" min="30" max="350" step="0.1" required value="${v('weight_kg')}" placeholder="kg"/></div>
+ <div class="field"><label>Target weight (kg)</label><input name="target_weight_kg" type="number" min="30" max="350" step="0.1" value="${v('target_weight_kg')}" placeholder="Optional"/></div><div class="field"><label>Goal</label><select name="goal" required>${opts(
    'goal',
    [
      ['fat_loss', 'Fat loss'],
@@ -102,12 +102,12 @@ export function aiPlannerPage() {
      ['general_fitness', 'General fitness'],
    ]
  )}</select></div>
- <div class="field"><label>ACTIVITY LEVEL</label><select name="activity_level">${opts('activity_level', [
+ <div class="field"><label>Activity level</label><select name="activity_level">${opts('activity_level', [
    ['sedentary', 'Mostly seated'],
    ['light', 'Light'],
    ['moderate', 'Moderate'],
    ['high', 'High'],
- ])}</select></div><div class="field"><label>TRAINING EXPERIENCE</label><select name="training_experience">${opts(
+ ])}</select></div><div class="field"><label>Training experience</label><select name="training_experience">${opts(
    'training_experience',
    [
      ['beginner', 'Beginner'],
@@ -115,7 +115,7 @@ export function aiPlannerPage() {
      ['advanced', 'Advanced'],
    ]
  )}</select></div>
- <div class="ai-section-title ai-wide">02 · Training schedule</div><div class="field"><label>TRAINING DAYS / WEEK</label><input name="training_days_per_week" type="number" min="0" max="7" required value="${v('training_days_per_week')}" step="1" placeholder="0–7"/></div><div class="field"><label>TRAINING ACCESS</label><select name="training_location" required>${opts(
+ <div class="ai-section-title ai-wide">02 · Training schedule</div><div class="field"><label>Training days / week</label><input name="training_days_per_week" type="number" min="0" max="7" required value="${v('training_days_per_week')}" step="1" placeholder="0–7"/></div><div class="field"><label>Training access</label><select name="training_location" required>${opts(
    'training_location',
    [
      ['gym', 'Gym'],
@@ -124,7 +124,7 @@ export function aiPlannerPage() {
      ['none', 'No current training'],
    ]
  )}</select></div>
- <div class="ai-section-title ai-wide">03 · Food and routine</div><div class="field"><label>DIET</label><select name="dietary_pattern" required>${opts(
+ <div class="ai-section-title ai-wide">03 · Food and routine</div><div class="field"><label>Diet</label><select name="dietary_pattern" required>${opts(
    'dietary_pattern',
    [
      ['omnivore', 'Omnivore'],
@@ -132,7 +132,7 @@ export function aiPlannerPage() {
      ['vegetarian', 'Vegetarian'],
      ['vegan', 'Vegan'],
    ]
- )}</select></div><div class="field"><label>MEALS PER DAY</label><select name="meals_per_day" required>${opts(
+ )}</select></div><div class="field"><label>Meals per day</label><select name="meals_per_day" required>${opts(
    'meals_per_day',
    [
      ['2', '2'],
@@ -142,10 +142,10 @@ export function aiPlannerPage() {
      ['6', '6'],
    ]
  )}</select></div>
- <div class="field"><label>DAILY BUDGET (₹)</label><input name="food_budget_inr" type="number" min="0" max="100000" value="${v('food_budget_inr')}" placeholder="Optional"/></div><div class="field"><label>COOKING TIME (MIN / DAY)</label><input name="cooking_minutes" type="number" min="0" max="180" value="${v('cooking_minutes')}" placeholder="Optional"/></div>
- <div class="field"><label>LOCATION / FOOD MARKET</label><input name="location" value="${v('location')}" placeholder="City, country"/></div><div class="field"><label>TIMELINE (WEEKS)</label><input name="goal_timeline_weeks" type="number" min="1" max="104" value="${v('goal_timeline_weeks')}" placeholder="Optional"/></div>
- <div class="ai-section-title ai-wide">04 · Constraints and preferences</div><div class="field ai-wide"><label>ALLERGIES / FOODS TO AVOID</label><input name="allergies" value="${v('allergies')}" placeholder="Ingredients to exclude"/></div><div class="field ai-wide"><label>FOODS YOU LIKE</label><input name="food_preferences" value="${v('food_preferences')}" placeholder="Chicken, eggs, dal, rice, curd..."/></div>
- <div class="field ai-wide"><label>PREFERRED CUISINES</label><input name="preferred_cuisines" value="${v('preferred_cuisines')}" placeholder="Indian home food, North Indian..."/></div><div class="field ai-wide"><label>OTHER CONSTRAINTS</label><textarea name="additional_notes" rows="3" placeholder="Work shifts, meal timing, equipment, disliked foods...">${v('additional_notes')}</textarea></div>
+ <div class="field"><label>Daily budget (₹)</label><input name="food_budget_inr" type="number" min="0" max="100000" value="${v('food_budget_inr')}" placeholder="Optional"/></div><div class="field"><label>Cooking time (min / day)</label><input name="cooking_minutes" type="number" min="0" max="180" value="${v('cooking_minutes')}" placeholder="Optional"/></div>
+ <div class="field"><label>Location / food market</label><input name="location" value="${v('location')}" placeholder="City, country"/></div><div class="field"><label>Timeline (weeks)</label><input name="goal_timeline_weeks" type="number" min="1" max="104" value="${v('goal_timeline_weeks')}" placeholder="Optional"/></div>
+ <div class="ai-section-title ai-wide">04 · Constraints and preferences</div><div class="field ai-wide"><label>Allergies / foods to avoid</label><input name="allergies" value="${v('allergies')}" placeholder="Ingredients to exclude"/></div><div class="field ai-wide"><label>Foods you like</label><input name="food_preferences" value="${v('food_preferences')}" placeholder="Chicken, eggs, dal, rice, curd..."/></div>
+ <div class="field ai-wide"><label>Preferred cuisines</label><input name="preferred_cuisines" value="${v('preferred_cuisines')}" placeholder="Indian home food, North Indian..."/></div><div class="field ai-wide"><label>Other constraints</label><textarea name="additional_notes" rows="3" placeholder="Work shifts, meal timing, equipment, disliked foods...">${v('additional_notes')}</textarea></div>
  <label class="row ai-wide u-fs12m"><input type="checkbox" name="adult_confirmed" required ${p.adult_confirmed ? 'checked' : ''}/> I am 18 or older and understand this is general wellness information, not medical advice.</label>
  <div class="ai-wide"><button class="btn primary" id="aiProfileAction" type="submit">${r ? 'Analyze edits & refine plan' : 'Generate my AI plan'}</button> ${r ? '<button class="btn" type="button" data-ai-generate-new>Generate a fresh plan</button>' : ''} <span class="ai-muted">Your profile stays editable. When you submit changes, the AI compares them with the previous plan, explains the implications and creates a reviewable draft.</span></div><div class="ai-wide ai-muted" id="aiEditPreview" aria-live="polite"></div></form>`
  )}
@@ -384,7 +384,7 @@ export function setAIProgress(action) {
 export function planChangeCard() {
   const c = S.lastPlanChange;
   if (!c) return '';
-  return `<section class="card plan-change"><div class="row between"><div class="eyebrow">${c.restored ? 'PLAN RESTORED' : 'PLAN UPDATED · WHAT CHANGED'}</div><button class="btn sm ghost" data-dismiss-change aria-label="Dismiss">✕</button></div><h2>${esc(c.title)}</h2>${c.summary && !c.restored ? `<p class="muted small clamp3">${esc(c.summary)}</p>` : ''}<ul class="chg">${c.lines.map((l) => `<li><b>${esc(l.label)}</b><span>${esc(l.detail)}</span></li>`).join('')}</ul>${c.prevId ? `<button class="btn" data-ai-restore="${esc(c.prevId)}">Undo this change</button>` : ''}</section>`;
+  return `<section class="card plan-change"><div class="row between"><div class="eyebrow">${c.restored ? 'Plan restored' : 'Plan updated · What changed'}</div><button class="btn sm ghost" data-dismiss-change aria-label="Dismiss">✕</button></div><h2>${esc(c.title)}</h2>${c.summary && !c.restored ? `<p class="muted small clamp3">${esc(c.summary)}</p>` : ''}<ul class="chg">${c.lines.map((l) => `<li><b>${esc(l.label)}</b><span>${esc(l.detail)}</span></li>`).join('')}</ul>${c.prevId ? `<button class="btn" data-ai-restore="${esc(c.prevId)}">Undo this change</button>` : ''}</section>`;
 }
 
 export async function runAIPlanRequest(action, profile, extra, button, workingLabel, idleLabel, onResult) {

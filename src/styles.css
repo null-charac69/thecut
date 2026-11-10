@@ -272,3 +272,24 @@ details.fold{padding:0}details.fold>summary{list-style:none;display:flex;justify
 .u-topdate{width:145px!important;padding:6px 8px!important;font-size:11px!important}
 .pw-0{width:0%}.pw-1{width:1%}.pw-2{width:2%}.pw-3{width:3%}.pw-4{width:4%}.pw-5{width:5%}.pw-6{width:6%}.pw-7{width:7%}.pw-8{width:8%}.pw-9{width:9%}.pw-10{width:10%}.pw-11{width:11%}.pw-12{width:12%}.pw-13{width:13%}.pw-14{width:14%}.pw-15{width:15%}.pw-16{width:16%}.pw-17{width:17%}.pw-18{width:18%}.pw-19{width:19%}.pw-20{width:20%}.pw-21{width:21%}.pw-22{width:22%}.pw-23{width:23%}.pw-24{width:24%}.pw-25{width:25%}.pw-26{width:26%}.pw-27{width:27%}.pw-28{width:28%}.pw-29{width:29%}.pw-30{width:30%}.pw-31{width:31%}.pw-32{width:32%}.pw-33{width:33%}.pw-34{width:34%}.pw-35{width:35%}.pw-36{width:36%}.pw-37{width:37%}.pw-38{width:38%}.pw-39{width:39%}.pw-40{width:40%}.pw-41{width:41%}.pw-42{width:42%}.pw-43{width:43%}.pw-44{width:44%}.pw-45{width:45%}.pw-46{width:46%}.pw-47{width:47%}.pw-48{width:48%}.pw-49{width:49%}.pw-50{width:50%}.pw-51{width:51%}.pw-52{width:52%}.pw-53{width:53%}.pw-54{width:54%}.pw-55{width:55%}.pw-56{width:56%}.pw-57{width:57%}.pw-58{width:58%}.pw-59{width:59%}.pw-60{width:60%}.pw-61{width:61%}.pw-62{width:62%}.pw-63{width:63%}.pw-64{width:64%}.pw-65{width:65%}.pw-66{width:66%}.pw-67{width:67%}.pw-68{width:68%}.pw-69{width:69%}.pw-70{width:70%}.pw-71{width:71%}.pw-72{width:72%}.pw-73{width:73%}.pw-74{width:74%}.pw-75{width:75%}.pw-76{width:76%}.pw-77{width:77%}.pw-78{width:78%}.pw-79{width:79%}.pw-80{width:80%}.pw-81{width:81%}.pw-82{width:82%}.pw-83{width:83%}.pw-84{width:84%}.pw-85{width:85%}.pw-86{width:86%}.pw-87{width:87%}.pw-88{width:88%}.pw-89{width:89%}.pw-90{width:90%}.pw-91{width:91%}.pw-92{width:92%}.pw-93{width:93%}.pw-94{width:94%}.pw-95{width:95%}.pw-96{width:96%}.pw-97{width:97%}.pw-98{width:98%}.pw-99{width:99%}.pw-100{width:100%}
 
+
+/* ---- Design polish: one icon family, quieter labels, flatter surfaces ---- */
+.icon{width:18px;height:18px;flex:none}
+.nav button .ico{display:inline-grid;place-items:center;font-size:0}
+.nav button .lock{display:inline-grid;font-size:0}.nav button .lock .icon{width:14px;height:14px}
+.mobilebar button span{display:grid;place-items:center;font-size:0}.mobilebar button span .icon{width:20px;height:20px}
+.eyebrow{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:none}
+.pagehead .eyebrow{font-size:12px}
+.plan-now .eyebrow,.plan-change .eyebrow,.coach .eyebrow{color:var(--lime)}
+.ai-section-title{color:var(--text);font-size:13px;letter-spacing:0;text-transform:none}
+.metric .label,.field label{font-size:12px;letter-spacing:0}
+.eyebrow.cat{text-transform:lowercase}.eyebrow.cat::first-letter{text-transform:uppercase}
+.page h1{letter-spacing:-.02em}
+.hero,.coach,.plan-change{background:var(--panel)}
+.plan-change{border-color:var(--line)}
+.nav button.ai-first,.nav button.ai-first.active{background:transparent;box-shadow:none;border:1px solid transparent}
+.nav button.ai-first.active{background:#29392f;border-color:#3d5542}
+.authwrap{background:var(--bg)}
+.sidebar-note{background:transparent;padding:14px 4px;border:0;border-top:1px solid var(--line);border-radius:0;color:var(--muted);font-size:13px;line-height:1.6}
+.sidebar-note strong{color:var(--text);margin-bottom:4px}
+.sidebar-note:empty{display:none}

@@ -191,7 +191,7 @@ test('plan: a new user generates a plan from the intake form and lands on it', a
   await page.locator('#aiProfileAction').click();
   await expect.poll(async () => (await rows(app, 'ai_plan_versions')).filter((v) => v.status === 'active').length).toBe(1);
   expect(app.aiCalls.some((c) => c.action === 'generate')).toBe(true);
-  await expect(page.getByText('PLAN UPDATED')).toBeVisible();
+  await expect(page.getByText('Plan updated')).toBeVisible();
   await expect(page.getByText('Refined plan, 2,000 kcal')).toBeVisible();
   expect(app.errors).toEqual([]);
 });

@@ -86,13 +86,13 @@ export function accountV3() {
   const since = S.user.created_at
     ? dateFmt(S.user.created_at.slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
-  return `${pageHead('PROFILE · DATA · SECURITY', 'Account', 'Your details, your data and your account controls.')}
+  return `${pageHead('Profile · Data · Security', 'Account', 'Your details, your data and your account controls.')}
  <div class="grid g2">
  ${card(
    'Profile',
    `<div class="acct-id"><div class="acct-av" aria-hidden="true">${esc((name || S.user.email || 'U').slice(0, 1).toUpperCase())}</div><div class="grow"><strong>${esc(name || 'No name set')}</strong><small>${esc(S.user.email)}</small></div><button class="btn sm" type="button" id="acctChangeEmail">Change email</button></div>
- <form id="acctForm" class="u-mt16"><div class="field"><label>DISPLAY NAME</label><input name="name" value="${esc(name)}" maxlength="60" placeholder="Your name" autocomplete="name"/></div><button class="btn primary" type="submit">Save name</button></form>
- <div class="acct-meta"><div><small>MEMBER SINCE</small><b>${since}</b></div><div><small>CURRENT PLAN</small><b>${S.aiActivePlan ? esc(S.aiActivePlan.title || 'Active plan') : 'No plan applied'}</b></div></div>`
+ <form id="acctForm" class="u-mt16"><div class="field"><label>Display name</label><input name="name" value="${esc(name)}" maxlength="60" placeholder="Your name" autocomplete="name"/></div><button class="btn primary" type="submit">Save name</button></form>
+ <div class="acct-meta"><div><small>Member since</small><b>${since}</b></div><div><small>Current plan</small><b>${S.aiActivePlan ? esc(S.aiActivePlan.title || 'Active plan') : 'No plan applied'}</b></div></div>`
  )}
  ${card(
    'Data & security',
@@ -188,7 +188,7 @@ function changeEmailFlow() {
   const m = document.createElement('div');
   m.className = 'modal-bg';
   m.id = 'emModal';
-  m.innerHTML = `<div class="modal u-tal" role="dialog" aria-modal="true" aria-labelledby="emT"><h2 id="emT" class="u-tac">Change email</h2><p class="muted u-tac">Currently <b>${esc(S.user.email)}</b>. We will send a confirmation link to both your old and new address. The change applies once you confirm.</p><form id="emForm"><div class="field"><label for="emNew">NEW EMAIL</label><input id="emNew" type="email" required autocomplete="email" placeholder="you@example.com"/></div><p class="muted small" id="emMsg" role="status"></p><div class="modal-actions"><button class="btn primary" type="submit" id="emGo">Send confirmation</button><button class="btn ghost" type="button" id="emCancel">Cancel</button></div></form></div>`;
+  m.innerHTML = `<div class="modal u-tal" role="dialog" aria-modal="true" aria-labelledby="emT"><h2 id="emT" class="u-tac">Change email</h2><p class="muted u-tac">Currently <b>${esc(S.user.email)}</b>. We will send a confirmation link to both your old and new address. The change applies once you confirm.</p><form id="emForm"><div class="field"><label for="emNew">New email</label><input id="emNew" type="email" required autocomplete="email" placeholder="you@example.com"/></div><p class="muted small" id="emMsg" role="status"></p><div class="modal-actions"><button class="btn primary" type="submit" id="emGo">Send confirmation</button><button class="btn ghost" type="button" id="emCancel">Cancel</button></div></form></div>`;
   document.body.appendChild(m);
   const close = () => {
     m.remove();

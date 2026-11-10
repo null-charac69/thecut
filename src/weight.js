@@ -35,10 +35,10 @@ export function weightV3() {
     cur = vals.length ? vals[vals.length - 1] : null,
     first = vals.length ? vals[0] : null;
   const delta = cur != null && first != null ? cur - first : null;
-  return `${pageHead('BODY WEIGHT', 'Weight', 'One number, logged regularly. The trend matters, not any single day.')}
- <div class="grid g3">${metric('CURRENT', cur != null ? fmt(cur) : '—', 'kg', S.wRows.length ? dateFmt(S.wRows[S.wRows.length - 1].measured_on, { day: 'numeric', month: 'short' }) : 'No weigh-ins yet')}${metric('CHANGE', delta != null ? (delta > 0 ? '+' : '') + fmt(delta) : '—', 'kg', 'Since your first weigh-in')}${metric('GOAL', goal ? fmt(goal) : '—', 'kg', goal && cur != null ? fmt(Math.abs(cur - goal)) + ' kg to go' : 'Set in your plan')}</div>
+  return `${pageHead('Body weight', 'Weight', 'One number, logged regularly. The trend matters, not any single day.')}
+ <div class="grid g3">${metric('Current', cur != null ? fmt(cur) : '—', 'kg', S.wRows.length ? dateFmt(S.wRows[S.wRows.length - 1].measured_on, { day: 'numeric', month: 'short' }) : 'No weigh-ins yet')}${metric('Change', delta != null ? (delta > 0 ? '+' : '') + fmt(delta) : '—', 'kg', 'Since your first weigh-in')}${metric('Goal', goal ? fmt(goal) : '—', 'kg', goal && cur != null ? fmt(Math.abs(cur - goal)) + ' kg to go' : 'Set in your plan')}</div>
  <div class="grid g2 u-mt16">${card('Trend', spark(vals.slice(-60), goal))}
- ${card('Log weight', `<form id="weightForm" class="formgrid"><div class="field"><label>DATE</label><input type="date" name="measured_on" value="${today()}" max="${today()}" required/></div><div class="field"><label>WEIGHT (KG)</label><input name="weight_kg" type="number" step="0.1" min="20" max="500" inputmode="decimal" required placeholder="80.0"/></div><button class="btn primary full">Save weigh-in</button></form><p class="muted small">Logging the same date again replaces that day's entry.</p>`)}</div>
+ ${card('Log weight', `<form id="weightForm" class="formgrid"><div class="field"><label>Date</label><input type="date" name="measured_on" value="${today()}" max="${today()}" required/></div><div class="field"><label>Weight (kg)</label><input name="weight_kg" type="number" step="0.1" min="20" max="500" inputmode="decimal" required placeholder="80.0"/></div><button class="btn primary full">Save weigh-in</button></form><p class="muted small">Logging the same date again replaces that day's entry.</p>`)}</div>
  <div class="u-mt16">${card(
    'History',
    S.wRows.length

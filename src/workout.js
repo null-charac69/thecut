@@ -201,7 +201,7 @@ function wkToggle(xi, si) {
 }
 
 export function workoutV3() {
-  if (!S.aiActivePlan) return pageHead('TRAINING', 'Workout', 'Log every set, live.') + needsPlanCard('training');
+  if (!S.aiActivePlan) return pageHead('Training', 'Workout', 'Log every set, live.') + needsPlanCard('training');
   wkLoadDraft();
   return S.wk ? wkLive() : wkStartView();
 }
@@ -229,7 +229,7 @@ function wkStartView() {
         .join('')}</details>`;
     })
     .join('');
-  return `${pageHead('TRAINING', 'Workout', 'Open a session, log each set as you do it.')}
+  return `${pageHead('Training', 'Workout', 'Open a session, log each set as you do it.')}
  ${card(
    ts ? 'Today · ' + esc(ts.day) : 'No session planned today',
    ts
@@ -277,7 +277,7 @@ function wkLive() {
   return `<div class="wk">
  <div class="wk-top"><div class="grow"><input class="wk-title" id="wkTitle" value="${esc(S.wk.title)}" aria-label="Workout name" maxlength="60"/><div class="wk-meta"><span id="wkClock">00:00</span><span>${done}/${total} sets</span><span>${fmt(volOf(S.wk.exs))} kg</span></div></div><div class="row"><button class="btn ghost" id="wkDiscard">Discard</button><button class="btn primary" id="wkFinish">Finish</button></div></div>
  <div class="progress"><i class="${pwc(total ? (done / total) * 100 : 0)}"></i></div>
- <div class="wk-restpick"><span class="muted small">REST TIMER</span>${[60, 90, 120, 180].map((s) => `<button class="chip ${S.wkRestDefault === s ? 'on' : ''}" data-wkrest="${s}">${s / 60 >= 1 && s % 60 === 0 ? s / 60 + ' min' : s + ' s'}</button>`).join('')}</div>
+ <div class="wk-restpick"><span class="muted small">Rest timer</span>${[60, 90, 120, 180].map((s) => `<button class="chip ${S.wkRestDefault === s ? 'on' : ''}" data-wkrest="${s}">${s / 60 >= 1 && s % 60 === 0 ? s / 60 + ' min' : s + ' s'}</button>`).join('')}</div>
  ${S.wk.exs
    .map((e, xi) => {
      const h = S.wkHist?.[e.name.trim().toLowerCase()],
@@ -285,7 +285,7 @@ function wkLive() {
          ? h.last.map((x) => `${fmt(x.weight_kg)}×${x.reps}`).join('  ·  ')
          : 'First time — no history yet';
      return `<section class="card wk-ex"><div class="row between"><h3>${esc(e.name)}${e.pr ? ' <span class="pr">PR</span>' : ''}</h3><button class="btn sm ghost" data-wkdelex="${xi}" aria-label="Remove ${esc(e.name)}">✕</button></div><div class="wk-prev">Last time: ${prev}${e.target ? ` · Coach target ${fmt(e.target)} kg` : ''}</div>
-  <div class="wk-sets"><div class="wk-h"><span>SET</span><span>KG</span><span>REPS</span><span></span></div>${e.sets.map((s, si) => `<div class="wk-set ${s.done ? 'done' : ''}"><span class="n">${si + 1}</span><input inputmode="decimal" data-wk="${xi}:${si}:kg" value="${esc(s.kg)}" placeholder="0" aria-label="Set ${si + 1} weight in kg"/><input inputmode="numeric" data-wk="${xi}:${si}:reps" value="${esc(s.reps)}" placeholder="0" aria-label="Set ${si + 1} reps"/><button class="tick" data-wktick="${xi}:${si}" aria-pressed="${s.done}" aria-label="Mark set ${si + 1} done">${s.done ? '✓' : ''}</button></div>`).join('')}</div>
+  <div class="wk-sets"><div class="wk-h"><span>Set</span><span>kg</span><span>Reps</span><span></span></div>${e.sets.map((s, si) => `<div class="wk-set ${s.done ? 'done' : ''}"><span class="n">${si + 1}</span><input inputmode="decimal" data-wk="${xi}:${si}:kg" value="${esc(s.kg)}" placeholder="0" aria-label="Set ${si + 1} weight in kg"/><input inputmode="numeric" data-wk="${xi}:${si}:reps" value="${esc(s.reps)}" placeholder="0" aria-label="Set ${si + 1} reps"/><button class="tick" data-wktick="${xi}:${si}" aria-pressed="${s.done}" aria-label="Mark set ${si + 1} done">${s.done ? '✓' : ''}</button></div>`).join('')}</div>
   <div class="row"><button class="btn sm" data-wkaddset="${xi}">+ Add set</button><button class="btn sm ghost" data-wkdelset="${xi}">− Remove set</button></div></section>`;
    })
    .join('')}
@@ -305,10 +305,10 @@ function wkFinishModal() {
   const m = document.createElement('div');
   m.className = 'modal-bg';
   m.id = 'wkModal';
-  m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="Finish workout"><div class="eyebrow">WORKOUT COMPLETE</div><h2>${esc(S.wk.title)}</h2>
+  m.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="Finish workout"><div class="eyebrow">Workout complete</div><h2>${esc(S.wk.title)}</h2>
  <div class="grid g3 wk-sum"><div><b>${mins}</b><small>minutes</small></div><div><b>${done}</b><small>sets</small></div><div><b>${fmt(volOf(S.wk.exs))}</b><small>kg volume</small></div></div>
  ${prs.length ? `<p class="pr-line">New PR: ${prs.map(esc).join(', ')}</p>` : ''}
- <label class="muted small">HOW HARD WAS IT? (1–10)</label><div class="rpe">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<button type="button" class="chip" data-rpe="${n}">${n}</button>`).join('')}</div>
+ <label class="muted small">How hard was it? (1–10)</label><div class="rpe">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<button type="button" class="chip" data-rpe="${n}">${n}</button>`).join('')}</div>
  <textarea id="wkNotes" rows="2" placeholder="Notes (optional)" maxlength="500"></textarea>
  <div class="row u-mt12"><button class="btn ghost" id="wkBack">Keep going</button><button class="btn primary grow" id="wkSaveBtn">Save workout</button></div></div>`;
   document.body.appendChild(m);

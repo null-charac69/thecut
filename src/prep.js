@@ -85,7 +85,7 @@ export async function loadGroceries() {
 export function prepV3() {
   if (!S.aiActivePlan)
     return (
-      pageHead('PREP & GROCERY', 'Prep & Grocery', 'Shopping list and meal prep.') + needsPlanCard('shopping and prep')
+      pageHead('Prep & grocery', 'Prep & Grocery', 'Shopping list and meal prep.') + needsPlanCard('shopping and prep')
     );
   const bought = S.groceries.filter((x) => x.is_purchased).length,
     donePrep = S.day.prep.filter((x) => x.is_completed).length;
@@ -105,7 +105,7 @@ export function prepV3() {
  }`;
   const prep = `<form id="prepForm" class="row addrow"><input name="task" required placeholder="Add a prep task"/><button class="btn primary">Add</button></form>
  ${S.day.prep.length ? S.day.prep.map((t) => `<label class="listitem tick-row"><input type="checkbox" data-prep="${t.id}" ${t.is_completed ? 'checked' : ''}/><div class="grow"><strong class="${t.is_completed ? 'struck' : ''}">${esc(t.task)}</strong></div><button class="btn sm ghost" data-delprep="${t.id}" aria-label="Remove task">✕</button></label>`).join('') : '<div class="empty">No prep tasks for this day.</div>'}`;
-  return `${pageHead('PREP & GROCERY', 'Prep & Grocery', 'Shop once, prep once, eat on plan.')}
+  return `${pageHead('Prep & grocery', 'Prep & Grocery', 'Shop once, prep once, eat on plan.')}
  <div class="seg" role="tablist"><button role="tab" data-prepview="grocery" class="${S.prepView === 'grocery' ? 'on' : ''}">Groceries <small>${bought}/${S.groceries.length}</small></button><button role="tab" data-prepview="prep" class="${S.prepView === 'prep' ? 'on' : ''}">Meal prep <small>${donePrep}/${S.day.prep.length}</small></button></div>
  ${card(S.prepView === 'grocery' ? 'This week’s groceries' : 'Prep for ' + dateFmt(S.date, { day: 'numeric', month: 'short' }), S.prepView === 'grocery' ? groc : prep)}`;
 }

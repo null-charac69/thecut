@@ -1,4 +1,5 @@
-import { esc, today, shift, fmt } from './lib/format.js';
+import { esc, today, shift, fmt, dateFmt } from './lib/format.js';
+import { icon } from './icons.js';
 import { S } from './state.js';
 import { accountV3, wireAccount } from './account.js';
 import { renderAuthV2 } from './auth.js';
@@ -24,6 +25,7 @@ import {
   mealsV3,
   saveFood,
   toggleMeal,
+  totals,
 } from './meals.js';
 import {
   aiPlannerPage,
@@ -107,12 +109,12 @@ export async function bootstrap() {
 }
 
 const NAV_ITEMS = [
-  ['ai', '✦', 'Plan', 'Plan'],
-  ['meals', '◉', 'Meals', 'Meals'],
-  ['workout', '↗', 'Workout', 'Workout'],
-  ['weight', '▤', 'Weight', 'Weight'],
-  ['coach', '◈', 'Coach', 'Coach'],
-  ['prep', '▣', 'Prep & Grocery', 'Prep'],
+  ['ai', 'sparkles', 'Plan', 'Plan'],
+  ['meals', 'utensils', 'Meals', 'Meals'],
+  ['workout', 'dumbbell', 'Workout', 'Workout'],
+  ['weight', 'scale', 'Weight', 'Weight'],
+  ['coach', 'message-circle', 'Coach', 'Coach'],
+  ['prep', 'shopping-basket', 'Prep & Grocery', 'Prep'],
 ];
 
 const LEGACY_TABS = {
@@ -130,20 +132,30 @@ function navBtn([id, ico, label, short], mobile) {
   const locked = !S.aiUnlocked && id !== 'ai',
     cls = (S.tab === id ? 'active' : '') + (locked ? ' locked' : '') + (id === 'ai' ? ' ai-first' : '');
   return mobile
-    ? `<button data-tab="${id}" class="${cls}" ${locked ? 'aria-disabled="true"' : ''}><span>${locked ? '🔒' : ico}</span>${short}</button>`
-    : `<button class="${cls}" data-tab="${id}" ${locked ? 'aria-disabled="true" title="Generate your first AI plan to unlock"' : ''}><span class="ico">${ico}</span>${label}${locked ? '<span class="lock">🔒</span>' : ''}</button>`;
+    ? `<button data-tab="${id}" class="${cls}" ${locked ? 'aria-disabled="true"' : ''}><span>${icon(locked ? 'lock' : ico)}</span>${short}</button>`
+    : `<button class="${cls}" data-tab="${id}" ${locked ? 'aria-disabled="true" title="Generate your first AI plan to unlock"' : ''}><span class="ico">${icon(ico)}</span>${label}${locked ? `<span class="lock">${icon('lock')}</span>` : ''}</button>`;
 }
 
 function nav() {
-  return `<aside class="sidebar"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>YOUR WORKSPACE</small></div></div><div class="nav-label">YOUR WORKSPACE</div><nav class="nav">${NAV_ITEMS.map((x) => navBtn(x)).join('')}</nav><div class="side-spacer"></div><div class="sidebar-note"><strong>THE DAILY RULE</strong>Make the next good choice. Then repeat.</div><div class="side-status"><i class="dot"></i>Cloud sync enabled</div></aside>`;
+  return `<aside class="sidebar"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>Your workspace</small></div></div><nav class="nav">${NAV_ITEMS.map((x) => navBtn(x)).join('')}</nav><div class="side-spacer"></div><div class="sidebar-note" id="sideSummary" aria-live="polite"></div><div class="side-status"><i class="dot"></i>Cloud sync enabled</div></aside>`;
 }
 
 function header() {
-  return `<header class="topbar${DATE_TABS.includes(S.tab) ? '' : ' nodate'}"><div class="crumb">THE CUT / <b>${(NAV_ITEMS.find((x) => x[0] === S.tab) || [0, 0, S.tab])[2].toUpperCase()}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${S.date}" max="${today()}" class="u-topdate"/><button class="pill" id="next" ${S.date >= today() ? 'disabled' : ''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">${bellHTML()}</button><span class="pill">${esc(S.user.email)}</span><button class="userpill" id="acctBtn" title="Account" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false">${esc((S.user.user_metadata?.name || S.user.email || 'U').slice(0, 1).toUpperCase())}</button></div></header>`;
+  return `<header class="topbar${DATE_TABS.includes(S.tab) ? '' : ' nodate'}"><div class="crumb">The Cut / <b>${(NAV_ITEMS.find((x) => x[0] === S.tab) || [0, 0, S.tab[0].toUpperCase() + S.tab.slice(1)])[2]}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${S.date}" max="${today()}" class="u-topdate"/><button class="pill" id="next" ${S.date >= today() ? 'disabled' : ''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">${bellHTML()}</button><span class="pill">${esc(S.user.email)}</span><button class="userpill" id="acctBtn" title="Account" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false">${esc((S.user.user_metadata?.name || S.user.email || 'U').slice(0, 1).toUpperCase())}</button></div></header>`;
+}
+
+export function sideSummaryHtml() {
+  if (!S.aiActivePlan)
+    return '<strong>No active plan yet</strong>Generate one on the Plan tab and your daily numbers show up here.';
+  const t = totals(),
+    meals = S.day.meals,
+    done = meals.filter((m) => m.status === 'completed').length,
+    when = S.date === today() ? 'Today' : dateFmt(S.date, { day: 'numeric', month: 'short' });
+  return `<strong>${when}</strong>${fmt(t.k)} of ${fmt(S.settings.calorie_target)} kcal<br>${fmt(t.p)} of ${fmt(S.settings.protein_target_g)} g protein<br>${done} of ${meals.length} meals done`;
 }
 
 export function pageHead(k, title, sub, extra = '') {
-  return `<div class="pagehead"><div><div class="eyebrow">${k}</div><h1>${title}<em>.</em></h1><p class="subtitle">${sub}</p></div>${extra}</div>`;
+  return `<div class="pagehead"><div><div class="eyebrow">${k}</div><h1>${title}${title === 'AI Planner' ? '<em>.</em>' : ''}</h1><p class="subtitle">${sub}</p></div>${extra}</div>`;
 }
 
 export function foldCard(title, body) {
@@ -184,6 +196,8 @@ export async function render() {
       }
     }
     await loadInsights();
+    const side = $('#sideSummary');
+    if (side) side.innerHTML = sideSummaryHtml();
     $('#pagebody').innerHTML = {
       ai: aiPlannerPage,
       meals: mealsV3,
@@ -191,7 +205,7 @@ export async function render() {
       weight: weightV3,
       account: accountV3,
       coach: () =>
-        S.aiActivePlan ? coachPanel(true) : pageHead('COACH', 'Coach', 'Your plan coach.') + needsPlanCard('coaching'),
+        S.aiActivePlan ? coachPanel(true) : pageHead('Coach', 'Coach', 'Your plan coach.') + needsPlanCard('coaching'),
       prep: prepV3,
     }[S.tab]();
     wire();
@@ -314,7 +328,7 @@ function wireV2() {
 const DATE_TABS = ['meals', 'prep'];
 
 export const needsPlanCard = (what) =>
-  `<div class="card empty-plan"><div class="eyebrow">NEXT STEP</div><h2>Apply your plan to start ${what}</h2><p class="muted">Your targets, meals and sessions come from your plan. Open it, review it, then press Apply.</p><button class="btn primary" data-tab="ai">Open my plan</button></div>`;
+  `<div class="card empty-plan"><div class="eyebrow">Next step</div><h2>Apply your plan to start ${what}</h2><p class="muted">Your targets, meals and sessions come from your plan. Open it, review it, then press Apply.</p><button class="btn primary" data-tab="ai">Open my plan</button></div>`;
 
 export const bar3 = (label, val, target, unit) => {
   const pct = Math.min(100, (Number(val) / Math.max(1, Number(target))) * 100);
