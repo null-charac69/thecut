@@ -269,3 +269,10 @@ details.fold{padding:0}details.fold>summary{list-style:none;display:flex;justify
 .fb-skip{display:block;width:100%;margin-top:6px;font-size:12px;color:var(--muted)}
 .fb-analysis{margin:10px 0}.fb-box{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:13px}
 .fb-box ul{margin:6px 0 0;padding-left:18px}.fb-box ul.chg{list-style:none;padding:0}.fb-box ul.chg li{display:grid;gap:2px;padding:6px 0;border-top:1px solid var(--line)}.fb-box ul.chg li:first-child{border-top:0}.fb-box ul.chg span{color:var(--muted);font-size:12px}
+/* Modal form (uiForm) */
+.modal-form{text-align:left}
+.modal-form h2{margin-top:0}
+.modal-form .formgrid{margin-top:14px}
+.modal-form textarea{margin-top:0;min-height:92px;resize:vertical}
+.form-error{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:#ff7e7322;color:var(--red);font-size:13px}
+.form-error[hidden]{display:none}

@@ -105,3 +105,40 @@ test('no CSP violations or console errors on any screen', async ({ page }) => {
   expect(app.errors).toEqual([]);
   expect(await app.csp()).toEqual([]);
 });
+
+test('meals: "+ Add a meal" opens a form (no native prompt), validates, and saves', async ({ page }) => {
+  const app = await openApp(page);
+  page.on('dialog', (d) => { throw new Error('native dialog used: ' + d.message()); });
+  await go(page, 'meals');
+  await page.locator('#addMealTemplate').click();
+  const dlg = page.getByRole('dialog', { name: 'Add a meal' });
+  await expect(dlg).toBeVisible();
+  await expect(dlg.getByLabel('Meal name')).toBeFocused();
+  await dlg.getByRole('button', { name: 'Add meal' }).click();
+  await expect(dlg.getByRole('alert')).toHaveText('Give the meal a name.');
+  await dlg.getByLabel('Meal name').fill('Post-workout shake');
+  await dlg.getByLabel('Planned time').fill('19:15');
+  await dlg.getByLabel('Calories (kcal)').fill('280');
+  await dlg.getByLabel('Protein (g)').fill('32');
+  await dlg.getByLabel('Components (optional)').fill('whey | 1 scoop\nmilk | 250 ml');
+  await dlg.getByRole('button', { name: 'Add meal' }).click();
+  await expect(dlg).toHaveCount(0);
+  await expect(page.getByText('Post-workout shake')).toBeVisible();
+  const items = (await rows(app, 'meal_template_items')).filter((i) => ['whey', 'milk', '__plan_total__'].includes(i.food_name_snapshot) && i.calories_kcal !== 105);
+  expect(items.map((i) => i.food_name_snapshot)).toEqual(expect.arrayContaining(['whey', 'milk']));
+  expect(app.errors).toEqual([]);
+});
+
+test('meals: Add a meal can be cancelled with Escape and keeps input when saving fails', async ({ page }) => {
+  const app = await openApp(page);
+  await go(page, 'meals');
+  await page.locator('#addMealTemplate').click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.evaluate(() => { window.__FAKE.failOn = (t, op) => t === 'meal_templates' && op === 'insert'; });
+  await page.locator('#addMealTemplate').click();
+  await page.getByLabel('Meal name').fill('Late snack');
+  await page.getByRole('button', { name: 'Add meal' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByLabel('Meal name')).toHaveValue('Late snack');
+});

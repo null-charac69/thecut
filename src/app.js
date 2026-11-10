@@ -234,7 +234,28 @@ function wire(){document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=asy
 $('#foodForm')?.addEventListener('submit',saveFood);$('#groceryForm')?.addEventListener('submit',addGroceryV2);$('#prepForm')?.addEventListener('submit',addPrep);
 document.querySelectorAll('[data-delfood]').forEach(b=>b.onclick=()=>deleteFood(b.dataset.delfood));document.querySelectorAll('[data-grocery]').forEach(b=>b.onchange=()=>updateGrocery(b.dataset.grocery,b.checked));document.querySelectorAll('[data-delgrocery]').forEach(b=>b.onclick=()=>deleteRow('grocery_items',b.dataset.delgrocery,'planning'));document.querySelectorAll('[data-prep]').forEach(b=>b.onchange=()=>updatePrep(b.dataset.prep,b.checked));document.querySelectorAll('[data-delprep]').forEach(b=>b.onclick=()=>deleteRow('prep_tasks',b.dataset.delprep,'planning'));document.querySelectorAll('[data-delworkout]').forEach(b=>b.onclick=()=>deleteRow('workout_sessions',b.dataset.delworkout,'training'));$('#aiIntakeForm')?.addEventListener('submit',generateAIPlan);$('#aiIntakeForm')?.addEventListener('input',updateAIEditPreview);$('#aiIntakeForm')?.addEventListener('change',updateAIEditPreview);document.querySelectorAll('[data-ai-generate-new]').forEach(b=>b.onclick=()=>generateFreshAIPlan(b));$('#aiRefineForm')?.addEventListener('submit',refineAIPlan);$('#aiRefineForm textarea')?.addEventListener('input',e=>{rf.text=e.target.value;rfInterrupted=false;$('#aiRefineForm .rf-note')?.classList.add('hidden');rfSave()});document.querySelectorAll('[data-ai-apply]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiApply));document.querySelectorAll('[data-ai-restore]').forEach(b=>b.onclick=()=>applyAIPlan(b.dataset.aiRestore,{quiet:true}));document.querySelectorAll('[data-dismiss-change]').forEach(b=>b.onclick=()=>{lastPlanChange=null;render()});}
 async function after(){await loadDay();await render()}
-async function addMealTemplateCore(){let name=prompt('Meal name');if(!name)return;let time=prompt('Planned time (HH:MM)','12:00');if(time===null)return;let kcal=prompt('Plan calories (kcal)','300');if(kcal===null)return;let protein=prompt('Plan protein (g)','25');if(protein===null)return;let parts=prompt('Meal components, one per line (ingredient | portion)','Example: chicken breast | 150 g raw');try{let t=await q(supabase.from('meal_templates').insert({user_id:user.id,name,sort_order:templates.length,planned_time:time+':00',is_active:true}).select().single());let items=(parts||'').split('\n').map((x,i)=>{let [food,unit='1 serving']=x.split('|').map(y=>y.trim());return {user_id:user.id,meal_template_id:t.id,food_name_snapshot:food,unit,quantity:1,sort_order:i}});items.push({user_id:user.id,meal_template_id:t.id,food_name_snapshot:'__plan_total__',unit:'plan estimate',quantity:1,calories_kcal:Number(kcal)||0,protein_g:Number(protein)||0,sort_order:99});await q(supabase.from('meal_template_items').insert(items));templates=await q(supabase.from('meal_templates').select('*,meal_template_items(*)').eq('user_id',user.id).eq('is_active',true).order('sort_order'));await ensureDay(date);toast('Meal template added');await after()}catch(e){fail(e)}}
+async function addMealTemplateCore(){
+ const saved=await uiForm({
+  title:'Add a meal',submit:'Add meal',
+  intro:'It joins your active plan. Calories and protein are estimates for the whole meal.',
+  fields:[
+   {name:'name',label:'Meal name',required:true,maxlength:60,placeholder:'e.g. Post-workout shake'},
+   {name:'time',label:'Planned time',type:'time',required:true,value:'12:00'},
+   {name:'kcal',label:'Calories (kcal)',type:'number',min:0,max:5000,step:1,inputmode:'numeric',value:'300'},
+   {name:'protein',label:'Protein (g)',type:'number',min:0,max:500,step:0.1,inputmode:'decimal',value:'25'},
+   {name:'parts',label:'Components (optional)',type:'textarea',rows:4,placeholder:'One per line: ingredient | portion\nchicken breast | 150 g raw',full:true}
+  ],
+  validate:v=>{if(!v.name.trim())return 'Give the meal a name.';if(!/^\d{2}:\d{2}$/.test(v.time))return 'Choose a planned time.';return ''},
+  onSubmit:async v=>{
+   const t=await q(supabase.from('meal_templates').insert({user_id:user.id,name:v.name.trim(),sort_order:templates.length,planned_time:v.time+':00',is_active:true}).select().single());
+   const items=v.parts.split('\n').map(x=>x.trim()).filter(Boolean).map((x,i)=>{const [food,unit='1 serving']=x.split('|').map(y=>y.trim());return {user_id:user.id,meal_template_id:t.id,food_name_snapshot:food,unit,quantity:1,sort_order:i}});
+   items.push({user_id:user.id,meal_template_id:t.id,food_name_snapshot:'__plan_total__',unit:'plan estimate',quantity:1,calories_kcal:Number(v.kcal)||0,protein_g:Number(v.protein)||0,sort_order:99});
+   await q(supabase.from('meal_template_items').insert(items));
+  }
+ });
+ if(!saved)return;
+ try{templates=await q(supabase.from('meal_templates').select('*,meal_template_items(*)').eq('user_id',user.id).eq('is_active',true).order('sort_order'));await ensureDay(date);toast('Meal added');await after()}catch(e){fail(e)}
+}
 async function saveFood(e){e.preventDefault();let f=new FormData(e.currentTarget),o={user_id:user.id,local_date:date,consumed_at:new Date().toISOString()};['food_name_snapshot','unit'].forEach(k=>o[k]=f.get(k));['quantity','calories_kcal','protein_g','carbs_g','fat_g','fiber_g'].forEach(k=>o[k]=Number(f.get(k)||0));try{let food=await q(supabase.from('foods').insert({user_id:user.id,name:o.food_name_snapshot,serving_label:o.unit,calories_kcal:o.calories_kcal,protein_g:o.protein_g,carbs_g:o.carbs_g,fat_g:o.fat_g,fiber_g:o.fiber_g}).select().single());o.food_id=food.id;await q(supabase.from('food_entries').insert(o));toast('Food entry saved and added to your food library');await after()}catch(e){fail(e)}}
 async function deleteFood(id){if(!await uiConfirm('Delete?','Delete this food entry?',{confirm:'Delete',danger:true}))return;await q(supabase.from('food_entries').delete().eq('id',id).eq('user_id',user.id));await after()}
 
@@ -775,6 +796,32 @@ function uiModal({icon='!',title,body='',actions=[{label:'OK',primary:true}],ton
 }
 function uiConfirm(title,body,{confirm='Confirm',cancel='Cancel',danger=false}={}){
  return new Promise(res=>uiModal({icon:danger?'!':'?',title,body:esc(body),tone:danger?'error':'info',id:'uiConfirm',actions:[{label:cancel,cancel:true,onClick:()=>res(false)},{label:confirm,primary:!danger,danger,onClick:()=>res(true)}]}));
+}
+/* Modal form: values are validated, the save runs inside the dialog so a failure keeps the input, and a second submit is ignored while saving. Resolves true when saved, false when cancelled. */
+function uiForm({title,intro='',submit='Save',fields=[],validate=()=>'',onSubmit,id='uiForm'}){
+ return new Promise(res=>{
+  document.getElementById(id)?.remove();
+  const opener=document.activeElement,m=document.createElement('div');m.className='modal-bg';m.id=id;
+  const ctl=f=>{const a=`name="${f.name}" id="${id}_${f.name}"${f.required?' required':''}${f.maxlength?` maxlength="${f.maxlength}"`:''}${f.placeholder?` placeholder="${esc(f.placeholder)}"`:''}`;
+   if(f.type==='textarea')return `<textarea ${a} rows="${f.rows||3}">${esc(f.value||'')}</textarea>`;
+   return `<input ${a} type="${f.type||'text'}" value="${esc(f.value??'')}"${f.min!=null?` min="${f.min}"`:''}${f.max!=null?` max="${f.max}"`:''}${f.step!=null?` step="${f.step}"`:''}${f.inputmode?` inputmode="${f.inputmode}"`:''}/>`};
+  m.innerHTML=`<form class="modal modal-form" role="dialog" aria-modal="true" aria-labelledby="${id}T"${intro?` aria-describedby="${id}B"`:''} novalidate><h2 id="${id}T">${esc(title)}</h2>${intro?`<p class="muted small" id="${id}B">${esc(intro)}</p>`:''}<div class="formgrid">${fields.map(f=>`<div class="field${f.full?' full':''}"><label for="${id}_${f.name}">${esc(f.label)}</label>${ctl(f)}</div>`).join('')}</div><p class="form-error" role="alert" hidden></p><div class="modal-actions"><button type="submit" class="btn primary">${esc(submit)}</button><button type="button" class="btn ghost" data-cancel>Cancel</button></div></form>`;
+  document.body.appendChild(m);
+  const form=m.querySelector('form'),err=m.querySelector('.form-error'),save=m.querySelector('[type=submit]');let busy=false;
+  const close=ok=>{document.removeEventListener('keydown',onKey,true);m.remove();try{opener?.focus?.()}catch(_){}res(ok)};
+  const show=t=>{err.textContent=t;err.hidden=!t};
+  const onKey=e=>{if(e.key==='Escape'&&!busy){e.stopPropagation();close(false)}
+   if(e.key==='Tab'){const f=[...m.querySelectorAll('input,textarea,select,button')].filter(x=>!x.disabled);if(!f.length)return;const a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus()}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}}};
+  document.addEventListener('keydown',onKey,true);
+  m.querySelector('[data-cancel]').onclick=()=>{if(!busy)close(false)};
+  form.addEventListener('submit',async e=>{e.preventDefault();if(busy)return;
+   const v={};fields.forEach(f=>v[f.name]=String(form.elements[f.name].value??''));
+   const bad=validate(v);if(bad){show(bad);return}
+   busy=true;save.disabled=true;save.textContent='Saving…';show('');
+   try{await onSubmit(v);close(true)}
+   catch(ex){busy=false;save.disabled=false;save.textContent=submit;show(friendlyError(ex).body||friendlyError(ex).title)}});
+  form.elements[fields[0]?.name]?.focus();
+ });
 }
 function authError(err,{email='',mode='in',setMode}={}){
  const f=friendlyError(err);const emailEl=$('input[name=email]'),pwEl=$('input[name=password]');
