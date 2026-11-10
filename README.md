@@ -1,4 +1,4 @@
-# THE CUT 2.0
+# THE CUT
 
 > Proprietary software. All rights reserved. Not licensed for use, copying or distribution. See [LICENSE](LICENSE).
 

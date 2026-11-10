@@ -2,7 +2,7 @@
   "name": "the-cut",
   "private": true,
   "type": "module",
-  "description": "THE CUT 2.0: dev tooling only. The app itself has no build step (see docs/TESTING.md).",
+  "description": "THE CUT: dev tooling only. The app itself has no build step (see docs/TESTING.md).",
   "scripts": {
     "test:unit": "node --experimental-strip-types --no-warnings --test tests/unit/*.test.mjs",
     "test:api": "python3 -m pytest tests/api -q",

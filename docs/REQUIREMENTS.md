@@ -1,10 +1,10 @@
-# THE CUT 2.0 — Requirements Specification & Progress Tracker
+# THE CUT — Requirements Specification & Progress Tracker
 
 | | |
 |---|---|
-| **Product** | THE CUT 2.0 — personal nutrition, training and transformation tracker with an AI planner and a live coach |
+| **Product** | THE CUT — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.3 |
+| **Version** | 1.4 |
 | **Date** | 2026-11-10 |
 | **Baseline** | `main` @ `b5c1e86` (dynamic workouts: per-exercise feedback and AI session review; previous baselines `f8db945`, `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
@@ -14,7 +14,7 @@
 
 ## 1. Purpose and scope
 
-This document is the single register of what THE CUT 2.0 **is required to do**, **already does**, and **does not yet do**. It was built from the deployed code (`src/index.html`, `supabase/functions/*`, `supabase/migrations/*`), the live Supabase project and the Vercel project as of the baseline above. Nothing here is aspirational: every requirement marked **Done** or **Partial** points at the place it lives. Items that are open, skipped or removed are listed in sections 10–13.
+This document is the single register of what THE CUT **is required to do**, **already does**, and **does not yet do**. It was built from the deployed code (`src/index.html`, `supabase/functions/*`, `supabase/migrations/*`), the live Supabase project and the Vercel project as of the baseline above. Nothing here is aspirational: every requirement marked **Done** or **Partial** points at the place it lives. Items that are open, skipped or removed are listed in sections 10–13.
 
 It serves two purposes:
 
@@ -601,3 +601,4 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | 1.1 | 2026-11-10 | Added PWA and QA modules; asset split and CSP change; corrected PUSH-05 and UX-12; closed OI-09; new open items OI-13 to OI-17 |
 | 1.2 | 2026-11-10 | Mobile layout and top bar; input-only Plan page with auto-apply/undo (PLAN-11, 12, 13, 16 revised; PLAN-20 to 23 added); bell dropdown (COACH-05); UX-16/17; CI workflow removed (QA-04 Skipped); KL-11/12 |
 | 1.3 | 2026-11-10 | Dynamic workouts: WORK-17 to 20 and US-12; PLAN-24 (Refine box persistence); `workout_review` action (AISVC-01); tables 24 → 26 and policies 33 → 40 (SEC-01, 7.1); export covers 24 tables; edge function v53; QA counts (36 unit, 67 API); OI-18, KL-13 |
+| 1.4 | 2026-11-10 | Product name changed from "THE CUT 2.0" to "THE CUT" (first release): app title, manifest, export `product`, README, LICENSE, docs, SQL comments |

@@ -1,4 +1,4 @@
--- THE CUT 2.0 coach sync: the AI always reads the LIVE plan (targets + meal templates + training week)
+-- THE CUT coach sync: the AI always reads the LIVE plan (targets + meal templates + training week)
 -- and compares it with the last state the coach acknowledged. Additive only.
 
 create table if not exists public.agent_baseline (

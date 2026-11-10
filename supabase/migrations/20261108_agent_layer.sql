@@ -1,4 +1,4 @@
--- THE CUT 2.0 — proactive agent layer (additive only; no existing table is altered except profiles.tour_completed_at)
+-- THE CUT — proactive agent layer (additive only; no existing table is altered except profiles.tour_completed_at)
 
 alter table public.profiles add column if not exists tour_completed_at timestamptz;
 

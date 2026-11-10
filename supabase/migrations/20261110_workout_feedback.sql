@@ -1,4 +1,4 @@
--- THE CUT 2.0 dynamic training: per-exercise feedback after a workout, and the AI review of each session
+-- THE CUT dynamic training: per-exercise feedback after a workout, and the AI review of each session
 -- (analysis + exact before/after of the training week so the change can be undone). Additive only.
 
 create table if not exists public.workout_feedback (
