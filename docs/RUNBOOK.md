@@ -18,7 +18,7 @@
 - [ ] Merge to main; verify production returns 200 and app mounts
 
 ## Housekeeping
-- Run `npm run check` and the API/e2e tests (docs/TESTING.md) before merging.
+- Run `npm run check` (lint, format, typecheck, unit, db, ui) and the API/e2e tests (docs/TESTING.md) before merging.
 - Remove QA edge functions `the-cut-auth-smoke-qa`, `the-cut-ai-smoke-qa`, `cut-test-provision` (verify_jwt off).
 - Enable leaked-password protection in Supabase Auth settings.
 - The legacy `src/api/ai-plan.js` proxy was removed; the app calls the `the-cut-ai` edge function directly.

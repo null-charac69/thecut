@@ -1,7 +1,7 @@
 # Architecture
 
 ```
-Browser (src/index.html + app.js + lib/*.js + styles.css)
+Browser (src/index.html + app.js entry + feature modules + lib/*.js + styles.css)
   |-- Supabase Auth / PostgREST (RLS: users only see own rows)
   |-- Supabase Realtime  <- agent_insights changes
   '-- POST /functions/v1/the-cut-ai  (JWT required)
@@ -25,3 +25,23 @@ Change Supabase Edge Function secrets only: `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_
 
 ## Gating
 `aiUnlocked` is true once the user has at least one row in `ai_plan_versions`. Client-side only (UX); data is protected by RLS regardless.
+
+## Frontend modules (`src/`)
+No build step; native ES modules. Cross-module calls use hoisted function declarations, so import cycles are safe.
+
+| Module | Responsibility |
+|---|---|
+| `app.js` | Entry: registers the service worker, reads the session, boots |
+| `client.js` | Supabase client, `$`, `q`, small helpers |
+| `state.js` | The single shared mutable state object `S` (read and written as `S.<name>`) |
+| `ui.js` | Modals (`uiModal`, `uiConfirm`, `uiForm`), toasts, error banner, a11y labels |
+| `auth.js` | Sign-in/up, recovery, verification, auth-state listener |
+| `shell.js` | Bootstrap, navigation, header, `render()`, event wiring |
+| `plan.js` | AI planner page, generate/refine/apply, plan history |
+| `meals.js`, `prep.js`, `weight.js` | Those tabs |
+| `workout.js`, `feedback.js` | Workout runner and the post-session coach review |
+| `coach.js` | Insights, chat, assessments, training-week editor |
+| `account.js` | Account page, email change, export, delete |
+| `icons.js` | Lucide icons used in navigation |
+
+CSP: `style-src 'self'`. Markup must not carry `style=` attributes; use classes (`u-*` utilities, `pw-N` for bar widths).

@@ -19,7 +19,7 @@ A personal nutrition, training and transformation tracker with an AI planner and
 ## Stack
 | Layer | Tech |
 |---|---|
-| Frontend | Static app, no build step: `src/index.html` + `src/app.js` + `src/styles.css` + `src/lib/*.js` (ES modules), Vercel (project `the-cut-tracker`, Root Directory `src`) |
+| Frontend | Static app, no build step: `src/index.html` + `src/app.js` (entry) + feature modules + `src/styles.css` + `src/lib/*.js` (ES modules), Vercel (project `the-cut-tracker`, Root Directory `src`) |
 | Backend | Supabase: Postgres + RLS, Auth, Realtime, Edge Functions, pg_cron (project `the-cut-cloud`) |
 | AI | Edge Function `the-cut-ai` (Deno), provider-agnostic OpenAI-compatible adapter. Current: DeepSeek V3.2 on AWS Bedrock via SigV4 (model id is a Supabase secret) |
 
@@ -32,13 +32,14 @@ A personal nutrition, training and transformation tracker with an AI planner and
 - [Deployment & runbook](docs/RUNBOOK.md)
 - [Testing](docs/TESTING.md)
 - [Requirements register](docs/REQUIREMENTS.md)
+- [SECURITY DEFINER audit](docs/SECURITY-AUDIT.md)
 
 ## Repo layout
 ```
-src/                              Vercel root: index.html, app.js, styles.css, lib/ (pure helpers), manifest, icons/, sw.js, vercel.json
+src/                              Vercel root: index.html, app.js and feature modules, styles.css, lib/ (pure helpers), manifest, icons/, sw.js, vercel.json
 supabase/functions/the-cut-ai/    Edge function (index.ts, llm.ts, plan.ts)
 supabase/functions/delete-account/ Edge function: wipes storage + auth user (rows cascade)
-tests/                            unit (node:test), api (pytest, RLS), e2e (Playwright)
+tests/                            unit, db (PGlite), ui (Playwright, mocked backend), api (pytest, RLS), e2e (Playwright, real backend)
 supabase/migrations/              SQL migrations (apply in order)
 docs/                             Documentation
 ```
