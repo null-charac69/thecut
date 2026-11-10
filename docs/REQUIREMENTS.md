@@ -4,7 +4,7 @@
 |---|---|
 | **Product** | THE CUT — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.6 |
+| **Version** | 1.7 |
 | **Date** | 2026-11-10 |
 | **Baseline** | `main` @ `b5c1e86` (dynamic workouts: per-exercise feedback and AI session review; previous baselines `f8db945`, `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
@@ -153,6 +153,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | PLAN-21 | Generation/refine shows progress that survives tab changes: shimmering button and a floating status pill with rotating messages; the user stays on the tab they moved to | P2 | Done | FE `setAIProgress`, `#aiProg` |
 | PLAN-22 | Plan page is input only: status card (active plan, draft waiting, undo), collapsed "Your details" with Edit, compact refine box | P1 | Done | FE `aiPlannerPage`, `aiPlanStatusCard`, `foldCard` |
 | PLAN-23 | Generate and Refine apply the plan immediately (no review step); Undo toast (9 s) restores the previous plan | P1 | Done | FE `saveAIDraft` → `applyAIPlan({auto:true})`, `toastUndo` |
+| PLAN-25 | "Delete plan & start fresh" on the Plan page, behind a confirmation that lists what goes and what stays. Removes the active plan, plan history, meal plan, targets, training week and unticked AI-built grocery/prep rows; keeps logged meals, workouts, weights, photos, eaten meals, ticked and hand-added list items. Tabs lock again and the intake form is empty. Not undoable | P1 | Done | FE `resetPlan`, `data-plan-reset`; DB RPC `reset_plan` (SECURITY INVOKER, migration `20261113_reset_plan`); `tests/db/reset-plan.test.mjs`, UI test |
 | PLAN-24 | The Refine box keeps its text and its running state when the user switches tabs, switches apps on a phone or reloads: the text is never lost, a running request repaints as busy, and after a reload an interrupted request shows a note instead of an empty box | P1 | Done | FE `rf`, `rfEnsure`, `rfPaint`, `rfBusy`, `runAIPlanRequest`; storage key `cut_refine_<uid>` (cleared on logout) |
 
 ### 4.3 AI service (AISVC)
@@ -481,12 +482,13 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | Notifications | `reminders`, `push_subscriptions`, `push_notification_deliveries` |
 | Coach | `agent_insights`, `agent_baseline` |
 
-### 7.2 Functions (18 in `public`)
+### 7.2 Functions (19 in `public`)
 
 | Purpose | Functions |
 |---|---|
 | Plans | `apply_ai_plan_version`, `save_training_week` |
 | Lists | `replace_generated_lists` |
+| Reset | `reset_plan` |
 | Coach engine | `agent_scan`, `agent_scan_me`, `agent_put`, `agent_put_ai`, `agent_clear`, `agent_metrics`, `agent_plan_state`, `agent_state_for`, `agent_week_summary`, `agent_ack_state`, `agent_trigger`, `agent_plan_trigger` |
 | Platform | `handle_new_user`, `set_updated_at`, `get_the_cut_push_config` |
 
@@ -617,3 +619,4 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | 1.4 | 2026-11-10 | Product name changed from "THE CUT 2.0" to "THE CUT" (first release): app title, manifest, export `product`, README, LICENSE, docs, SQL comments |
 | 1.5 | 2026-11-11 | Dead code for features not in the UI deleted (RM-07); `app.js` split into modules with shared state; monkey patches replaced; Add-a-meal modal form; inline styles and `unsafe-inline` removed; CSS pruned; Lucide icons, sentence-case labels, data-driven sidebar summary; Coach chat visibility bug fixed; SECURITY DEFINER audit (SEC-07); mocked-backend UI tests and in-process Postgres tests; migration for complete plan undo written and applied to production (OI-19) |
 | 1.6 | 2026-11-10 | Grocery and prep are AI-generated from the live plan and follow it (PREP-01 to 11, AISVC-09, `lists` action, edge function v54, `the-cut-plan-v3` / `the-cut-lists-v1`); weeks start on Sunday; mid-week plan changes rebuild the rest of the week only; sentence-case category headers; seeded default targets removed; `list_generations` table and `replace_generated_lists` RPC (tables 27, functions 18, policies 41); unit 44, db 14, ui 27; OI-20, KL-14/15; principle: nothing hard-coded |
+| 1.7 | 2026-11-10 | "Delete plan & start fresh" (PLAN-25, `reset_plan` RPC, migration `20261113_reset_plan` applied to production); functions 19; db 19 tests, ui 28 |

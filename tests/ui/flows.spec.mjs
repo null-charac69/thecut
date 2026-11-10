@@ -26,7 +26,9 @@ test('meals: tick a meal, add an extra, delete it', async ({ page }) => {
   const app = await openApp(page);
   await go(page, 'meals');
   await page.locator('[data-meal]').nth(1).click();
-  await expect.poll(async () => (await rows(app, 'daily_meals')).filter((m) => m.status === 'completed').length).toBe(2);
+  await expect
+    .poll(async () => (await rows(app, 'daily_meals')).filter((m) => m.status === 'completed').length)
+    .toBe(2);
   await page.locator('#foodForm input[name=food_name_snapshot]').fill('Banana shake');
   await page.locator('#foodForm input[name=calories_kcal]').fill('220');
   await page.locator('#foodForm .btn.primary').click();
@@ -42,7 +44,9 @@ test('weight: log a weigh-in', async ({ page }) => {
   await go(page, 'weight');
   await page.locator('#weightForm input[name=weight_kg]').fill('80.2');
   await page.locator('#weightForm .btn.primary').click();
-  await expect.poll(async () => (await rows(app, 'body_measurements')).some((r) => Number(r.weight_kg) === 80.2)).toBe(true);
+  await expect
+    .poll(async () => (await rows(app, 'body_measurements')).some((r) => Number(r.weight_kg) === 80.2))
+    .toBe(true);
 });
 
 test('prep: tick a task and add a grocery item', async ({ page }) => {
@@ -72,13 +76,38 @@ test('plan: apply the draft, then undo restores the previous plan and its lists'
   expect(app.errors).toEqual([]);
 });
 
+test('plan: delete my plan and start fresh asks first, then clears the plan and locks the tabs', async ({ page }) => {
+  const app = await openApp(page);
+  await expect(page.locator('.plan-now', { hasText: 'Active plan' }).locator('h2')).toHaveText('Lean cut, 2,100 kcal');
+  // Cancelling changes nothing.
+  await page.getByRole('button', { name: 'Delete plan & start fresh' }).click();
+  await expect(page.locator('#uiConfirm')).toContainText('logged meals, workouts, weights and photos are kept');
+  await page.locator('#uiConfirm [data-act="0"]').click();
+  expect((await rows(app, 'ai_plan_versions')).length).toBeGreaterThan(0);
+  // Confirming wipes the plan and its lists, keeps what the user logged.
+  const loggedBefore = (await rows(app, 'workout_sessions')).length;
+  await page.getByRole('button', { name: 'Delete plan & start fresh' }).click();
+  await page.locator('#uiConfirm [data-act="1"]').click();
+  await expect(page.getByText('Plan deleted. Fill in your details to start fresh.')).toBeVisible();
+  await expect(page.locator('.plan-now')).toHaveCount(0);
+  expect(await rows(app, 'ai_plan_versions')).toEqual([]);
+  expect((await rows(app, 'meal_templates')).filter((t) => t.is_active)).toEqual([]);
+  expect((await rows(app, 'grocery_items')).filter((x) => x.source_version_id && !x.is_purchased)).toEqual([]);
+  expect((await rows(app, 'workout_sessions')).length).toBe(loggedBefore);
+  await expect(page.locator('button[data-tab="meals"][aria-disabled="true"]').first()).toBeVisible();
+  await expect(page.locator('#aiIntakeForm')).toBeVisible();
+  expect(app.errors).toEqual([]);
+});
+
 test('plan: restoring an older plan from account history works', async ({ page }) => {
   const app = await openApp(page);
   await page.locator('#acctBtn').click();
   await page.locator('#acctMenu [data-am="account"]').click();
   await expect(page.getByText('Plan history')).toBeVisible();
   await page.locator('[data-ai-restore]').first().click();
-  await expect.poll(async () => (await rows(app, 'ai_plan_versions')).find((v) => v.status === 'active').title).toBe('Maintenance, 2,500 kcal');
+  await expect
+    .poll(async () => (await rows(app, 'ai_plan_versions')).find((v) => v.status === 'active').title)
+    .toBe('Maintenance, 2,500 kcal');
 });
 
 test('workout: start today and log a set', async ({ page }) => {
@@ -108,7 +137,9 @@ test('no CSP violations or console errors on any screen', async ({ page }) => {
 
 test('meals: "+ Add a meal" opens a form (no native prompt), validates, and saves', async ({ page }) => {
   const app = await openApp(page);
-  page.on('dialog', (d) => { throw new Error('native dialog used: ' + d.message()); });
+  page.on('dialog', (d) => {
+    throw new Error('native dialog used: ' + d.message());
+  });
   await go(page, 'meals');
   await page.locator('#addMealTemplate').click();
   const dlg = page.getByRole('dialog', { name: 'Add a meal' });
@@ -124,7 +155,9 @@ test('meals: "+ Add a meal" opens a form (no native prompt), validates, and save
   await dlg.getByRole('button', { name: 'Add meal' }).click();
   await expect(dlg).toHaveCount(0);
   await expect(page.getByText('Post-workout shake')).toBeVisible();
-  const items = (await rows(app, 'meal_template_items')).filter((i) => ['whey', 'milk', '__plan_total__'].includes(i.food_name_snapshot) && i.calories_kcal !== 105);
+  const items = (await rows(app, 'meal_template_items')).filter(
+    (i) => ['whey', 'milk', '__plan_total__'].includes(i.food_name_snapshot) && i.calories_kcal !== 105
+  );
   expect(items.map((i) => i.food_name_snapshot)).toEqual(expect.arrayContaining(['whey', 'milk']));
   expect(app.errors).toEqual([]);
 });
@@ -135,7 +168,9 @@ test('meals: Add a meal can be cancelled with Escape and keeps input when saving
   await page.locator('#addMealTemplate').click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.evaluate(() => { window.__FAKE.failOn = (t, op) => t === 'meal_templates' && op === 'insert'; });
+  await page.evaluate(() => {
+    window.__FAKE.failOn = (t, op) => t === 'meal_templates' && op === 'insert';
+  });
   await page.locator('#addMealTemplate').click();
   await page.getByLabel('Meal name').fill('Late snack');
   await page.getByRole('button', { name: 'Add meal' }).click();
@@ -143,7 +178,9 @@ test('meals: Add a meal can be cancelled with Escape and keeps input when saving
   await expect(page.getByLabel('Meal name')).toHaveValue('Late snack');
 });
 
-test('CSP: no violations across menus, modals, coach and account (style-src has no unsafe-inline)', async ({ page }) => {
+test('CSP: no violations across menus, modals, coach and account (style-src has no unsafe-inline)', async ({
+  page,
+}) => {
   const app = await openApp(page);
   await page.locator('#bell').click();
   await page.keyboard.press('Escape');
@@ -186,10 +223,13 @@ test('plan: a new user generates a plan from the intake form and lands on it', a
   await f.locator('[name=height_cm]').fill('176');
   await f.locator('[name=weight_kg]').fill('82');
   await f.locator('[name=training_days_per_week]').fill('4');
-  for (const n of ['goal', 'training_location', 'dietary_pattern', 'meals_per_day']) await f.locator(`select[name=${n}]`).selectOption({ index: 1 });
+  for (const n of ['goal', 'training_location', 'dietary_pattern', 'meals_per_day'])
+    await f.locator(`select[name=${n}]`).selectOption({ index: 1 });
   await f.locator('[name=adult_confirmed]').check();
   await page.locator('#aiProfileAction').click();
-  await expect.poll(async () => (await rows(app, 'ai_plan_versions')).filter((v) => v.status === 'active').length).toBe(1);
+  await expect
+    .poll(async () => (await rows(app, 'ai_plan_versions')).filter((v) => v.status === 'active').length)
+    .toBe(1);
   expect(app.aiCalls.some((c) => c.action === 'generate')).toBe(true);
   await expect(page.getByText('Plan updated')).toBeVisible();
   await expect(page.getByText('Refined plan, 2,000 kcal')).toBeVisible();
@@ -248,7 +288,8 @@ test('workout: finishing with no ticked sets is refused', async ({ page }) => {
 });
 
 // ---------- Prep & grocery: AI-built lists that follow the plan ----------
-const cats = (page) => page.locator('#pagebody h3.cat').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
+const cats = (page) =>
+  page.locator('#pagebody h3.cat').evaluateAll((els) => els.map((e) => e.firstChild.textContent.trim()));
 const lists = (app) => app.aiCalls.filter((c) => c.action === 'lists');
 
 test('prep: category headers are in sentence case and grouped from the data', async ({ page }) => {
@@ -261,7 +302,7 @@ test('prep: category headers are in sentence case and grouped from the data', as
   expect(app.errors).toEqual([]);
 });
 
-test('prep: nothing is rebuilt when the plan has not changed since this week\'s lists were built', async ({ page }) => {
+test("prep: nothing is rebuilt when the plan has not changed since this week's lists were built", async ({ page }) => {
   const app = await openApp(page);
   await go(page, 'prep');
   await expect(page.locator('[data-grocery]').first()).toBeVisible();
@@ -273,7 +314,9 @@ test('prep: nothing is rebuilt when the plan has not changed since this week\'s 
   expect(lists(app).length).toBe(1); // switching views does not ask again
 });
 
-test('prep: going vegetarian mid-week replaces chicken in the groceries and prep, and keeps what was ticked or is history', async ({ page }) => {
+test('prep: going vegetarian mid-week replaces chicken in the groceries and prep, and keeps what was ticked or is history', async ({
+  page,
+}) => {
   const app = await openApp(page);
   await expect(page.getByText('Lean bulk, 2,800 kcal')).toBeVisible();
   await page.getByRole('button', { name: 'Apply to my workspace' }).click();
@@ -287,7 +330,9 @@ test('prep: going vegetarian mid-week replaces chicken in the groceries and prep
   expect(g).toContain('Whole eggs'); // already bought: stays, now the user's own item
   expect(g).toEqual(expect.arrayContaining(['Besan chilla', 'Soya chunks', 'Paneer']));
   const prep = await rows(app, 'prep_tasks');
-  expect(prep.filter((t) => t.local_date === '2026-11-10').map((t) => t.task)).not.toContain('Portion chicken for 3 days');
+  expect(prep.filter((t) => t.local_date === '2026-11-10').map((t) => t.task)).not.toContain(
+    'Portion chicken for 3 days'
+  );
   expect(prep.filter((t) => t.local_date === '2026-11-10').map((t) => t.task)).toContain('Boil 6 eggs'); // ticked
   expect(prep.find((t) => t.task === 'Marinate chicken')).toBeTruthy(); // yesterday is history
   // prep exists for today and the rest of the week (Tue to Sat), not before
@@ -297,10 +342,15 @@ test('prep: going vegetarian mid-week replaces chicken in the groceries and prep
   expect(app.errors).toEqual([]);
 });
 
-test('prep: Regenerate asks the AI again and a failure shows a message with Try again, without looping', async ({ page }) => {
+test('prep: Regenerate asks the AI again and a failure shows a message with Try again, without looping', async ({
+  page,
+}) => {
   let fail = true;
   const app = await openApp(page, {
-    ai: (b) => (b.action === 'lists' && b.force && fail ? [502, { error: 'The AI service is busy. Try again in a minute.' }] : undefined),
+    ai: (b) =>
+      b.action === 'lists' && b.force && fail
+        ? [502, { error: 'The AI service is busy. Try again in a minute.' }]
+        : undefined,
   });
   await go(page, 'prep');
   await expect(page.locator('[data-grocery]').first()).toBeVisible();

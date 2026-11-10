@@ -23,7 +23,11 @@ create table public.daily_targets(user_id uuid, local_date date, calorie_target 
 create table public.grocery_items(id uuid primary key default gen_random_uuid(), user_id uuid not null, week_start date not null, name text not null, quantity text, is_purchased boolean not null default false, sort_order int not null default 0, category text);
 create table public.prep_tasks(id uuid primary key default gen_random_uuid(), user_id uuid not null, local_date date not null, task text not null, is_completed boolean not null default false, sort_order int not null default 0);
 `;
-export const MIGRATIONS = ['20261111_plan_undo_complete.sql', '20261112_ai_lists_sunday_weeks.sql'];
+export const MIGRATIONS = [
+  '20261111_plan_undo_complete.sql',
+  '20261112_ai_lists_sunday_weeks.sql',
+  '20261113_reset_plan.sql',
+];
 export const run = (db, file) =>
   db.exec(readFileSync(new URL('../../supabase/migrations/' + file, import.meta.url), 'utf8'));
 

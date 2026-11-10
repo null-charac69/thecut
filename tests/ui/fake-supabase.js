@@ -132,6 +132,22 @@ const RPC = {
     v.status = 'active'; v.applied_at = new Date().toISOString();
     return { applied: true, meal_templates_created: v.plan.meals.length };
   },
+  reset_plan({ p_local_date, p_week_start }) {
+    const db = F(), T = db.tables, u = db.session.user.id;
+    T.daily_meals = T.daily_meals.filter((m) => !(m.user_id === u && m.local_date >= p_local_date && m.status === 'planned'));
+    const tpl = T.meal_templates.filter((t) => t.user_id === u && t.is_active);
+    tpl.forEach((t) => (t.is_active = false));
+    T.grocery_items = T.grocery_items.filter((r) => !(r.user_id === u && r.source_version_id && !r.is_purchased && r.week_start >= p_week_start));
+    T.prep_tasks = T.prep_tasks.filter((r) => !(r.user_id === u && r.source_version_id && !r.is_completed && r.local_date >= p_local_date));
+    T.list_generations = (T.list_generations || []).filter((g) => g.user_id !== u);
+    T.daily_targets = (T.daily_targets || []).filter((x) => !(x.user_id === u && x.local_date >= p_local_date));
+    const s = T.user_settings.find((x) => x.user_id === u);
+    if (s) Object.assign(s, { calorie_target: null, protein_target_g: null, carbs_target_g: null, fat_target_g: null, fiber_target_g: null, water_target_ml: null });
+    const n = T.ai_plan_versions.filter((x) => x.user_id === u).length;
+    T.ai_plan_versions = T.ai_plan_versions.filter((x) => x.user_id !== u);
+    T.grocery_items.concat(T.prep_tasks).filter((r) => r.user_id === u && r.source_version_id).forEach((r) => (r.source_version_id = null));
+    return { plans_deleted: n, meal_templates_deactivated: tpl.length };
+  },
   save_training_week({ p_week }) {
     const db = F(), a = db.tables.ai_plan_versions.filter((x) => x.status === 'active')[0];
     if (!a) throw new Error('No active plan');

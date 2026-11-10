@@ -1,4 +1,4 @@
-import { esc, fmt, weekStart } from './lib/format.js';
+import { esc, fmt, today, weekStart } from './lib/format.js';
 import { diffPlans } from './lib/plandiff.js';
 import { S } from './state.js';
 import { $, SUPABASE_KEY, SUPABASE_URL, q, supabase } from './client.js';
@@ -64,6 +64,8 @@ function aiPlanStatusCard() {
     h += `<section class="card plan-now"><div class="eyebrow">Draft waiting</div><h2>${esc(draft.title)}</h2><p class="muted small">${tg(draft)}</p><button class="btn primary" data-ai-apply="${draft.id}">Apply to my workspace</button></section>`;
   if (act)
     h += `<section class="card plan-now"><div class="eyebrow">Active plan</div><h2>${esc(act.title)}</h2><p class="muted small">${tg(act)}</p><div class="row wrap"><button class="btn" data-goto="meals">See meals</button>${prev ? `<button class="btn ghost" data-ai-restore="${prev.id}">Undo last change</button>` : ''}</div></section>`;
+  if (S.aiPlanHistory.length)
+    h += `<div class="row between u-mb10"><small class="muted">Want a clean slate? This removes your plan and plan history.</small><button class="btn sm ghost danger" data-plan-reset>Delete plan &amp; start fresh</button></div>`;
   return h;
 }
 
@@ -621,4 +623,41 @@ export async function loadPlanHistory() {
       .order('created_at', { ascending: false })
       .limit(10)
   );
+}
+
+/** Deletes the plan, its history and everything derived from it. Logged meals, workouts and weights are kept. */
+export async function resetPlan() {
+  const ok = await uiConfirm(
+    'Delete your plan and start fresh?',
+    'This removes your active plan, your plan history, your meal plan, targets, training week and the AI-built grocery and prep lists. Your logged meals, workouts, weights and photos are kept. This cannot be undone.',
+    { confirm: 'Delete plan', danger: true }
+  );
+  if (!ok) return false;
+  try {
+    await q(supabase.rpc('reset_plan', { p_local_date: today(), p_week_start: weekStart(today()) }));
+    S.aiUnlocked = false;
+    S.aiActivePlan = null;
+    S.aiPlanHistory = [];
+    S.aiPlanDraft = null;
+    S.lastPlanChange = null;
+    S.groceries = [];
+    S.settings = {
+      ...S.settings,
+      calorie_target: null,
+      protein_target_g: null,
+      carbs_target_g: null,
+      fat_target_g: null,
+      fiber_target_g: null,
+      water_target_ml: null,
+    };
+    S.listsKey = '';
+    markListsStale();
+    S.tab = 'ai';
+    await render();
+    toast('Plan deleted. Fill in your details to start fresh.');
+    return true;
+  } catch (e) {
+    fail(e);
+    return false;
+  }
 }

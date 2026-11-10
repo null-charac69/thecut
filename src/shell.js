@@ -36,6 +36,7 @@ import {
   loadModule,
   loadPlanHistory,
   refineAIPlan,
+  resetPlan,
   rfSave,
   updateAIEditPreview,
 } from './plan.js';
@@ -253,6 +254,7 @@ function wire() {
     $('#aiRefineForm .rf-note')?.classList.add('hidden');
     rfSave();
   });
+  document.querySelectorAll('[data-plan-reset]').forEach((b) => (b.onclick = () => resetPlan()));
   document.querySelectorAll('[data-ai-apply]').forEach((b) => (b.onclick = () => applyAIPlan(b.dataset.aiApply)));
   document
     .querySelectorAll('[data-ai-restore]')
