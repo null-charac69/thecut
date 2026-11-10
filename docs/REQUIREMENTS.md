@@ -4,7 +4,7 @@
 |---|---|
 | **Product** | THE CUT — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.7 |
+| **Version** | 1.8 |
 | **Date** | 2026-11-10 |
 | **Baseline** | `main` @ `b5c1e86` (dynamic workouts: per-exercise feedback and AI session review; previous baselines `f8db945`, `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
@@ -256,11 +256,12 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | PREP-03 | Daily meal-prep tasks built by the AI per day: tick, add, remove | P1 | Done | FE `addPrep`, `updatePrep`, `deleteRow`; DB `prep_tasks` |
 | PREP-04 | Segmented switch between Groceries and Meal prep with done counts | P2 | Done | FE `prepView` |
 | PREP-05 | Items added by hand carry no category the user must pick; the AI-chosen categories apply to its own rows and a hand-added row shows under "Other" | P2 | Done | FE `addGroceryV2`, `catLabel` |
-| PREP-06 | Lists are built automatically when Prep & Grocery is opened and the live meals differ from what the week's lists were built from. A "Regenerate" button forces a rebuild; a failed build shows an error with "Try again" and never leaves a half-written list | P0 | Done | FE `ensureLists`, `[data-lists-regen]`; EF `lists`; DB `list_generations` (week, plan hash, plan version) |
-| PREP-07 | The lists follow the plan. After a plan is applied (refine, fresh plan, restore, undo) or a meal is added, the stale AI-built rows are cleared and rebuilt from the new meals. Example: switching a plan from non-veg to veg removes chicken from groceries and prep | P0 | Done | FE `markListsStale` (`applyAIPlan`, Add-a-meal); DB `apply_ai_plan_version` clears AI rows and resets the week's plan hash |
+| PREP-06 | The grocery list and prep are built automatically in the background right after a plan is applied (generate, refine, restore, undo) or a meal is added, and a toast says when they are ready. Opening Prep & Grocery never starts a build by itself. When no list exists the tab shows "Need help with meal prep and groceries?" with a **Generate** button; a **Regenerate** button forces a rebuild and a failed build shows the error with **Try again**, never a half-written list. A plan change during a build triggers one more build | P0 | Done | FE `ensureLists` (`notify`, `force`), `prepV3` call-to-action; `applyAIPlan`, `addMealTemplate`; EF `lists`; DB `list_generations`; UI tests |
+| PREP-07 | The lists follow the plan. After a plan is applied or a meal is added, the stale AI-built rows are cleared and rebuilt from the new meals (automatically, see PREP-06). Example: switching a plan from non-veg to veg removes chicken from groceries and prep | P0 | Done | FE `markListsStale`; DB `apply_ai_plan_version` clears AI rows and resets the week's plan hash |
 | PREP-08 | Weeks run Sunday to Saturday (`weekStart` returns the Sunday; the database rejects a non-Sunday week) | P0 | Done | FE `src/lib/format.js` `weekStart`; DB `replace_generated_lists`; unit tests |
 | PREP-09 | A new week gets groceries for the whole week and prep from today. A plan change mid-week rebuilds groceries and prep for the rest of the week only (today to Saturday); next week resets to a whole week | P0 | Done | EF `lists` (`new_week` / `rest_of_week`), `datesFrom`; DB `replace_generated_lists` (`p_from`); DB tests |
 | PREP-10 | A rebuild never touches the user's work: ticked or bought AI rows become the user's own and stay, hand-added rows stay, past days are untouched. Only unticked AI rows are replaced | P0 | Done | DB `replace_generated_lists`, `source_version_id`; `tests/db/lists.test.mjs` |
+| PREP-12 | When a build finishes, the grocery counts and the day's meal-prep counts and tasks both refresh (previously the prep count stayed at 0/0 until the user switched tabs) | P1 | Done | FE `loadPrep` in `render` for the Prep tab; UI test "Generate fills both groceries and meal prep" |
 | PREP-11 | No default nutrition targets are seeded for a new account (calorie, protein and water targets start empty and come from the AI plan) | P1 | Done | FE `src/shell.js`; DB migration `20261112_ai_lists_sunday_weeks` (columns nullable, defaults dropped) |
 
 ### 4.9 Account, data export and deletion (ACCT)
@@ -602,6 +603,7 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | KL-12 | Auto-applied plans skip the old review step; safety concerns now surface through the Coach (and the AI's own summary on the What-changed card). |
 | KL-13 | Workout reviews change the recurring weekly training week of the active plan, not a dated calendar; Undo is offered only while that week is unchanged since the review. |
 | KL-14 | Between the migration and the front-end deploy on 2026-11-10 the old client (Monday weeks) briefly coexisted with Sunday-keyed rows; existing unticked lists were cleared once and rebuilt. Ticked rows from before that were kept. |
+| KL-16 | The "plan changed, rebuild needed" flag lives in memory. If the page is reloaded or closed before a background build finishes, nothing rebuilds on its own; the Prep tab then shows the old list with Regenerate (or Generate if empty). |
 | KL-15 | The grocery list is rebuilt only when the live meals change or the user presses Regenerate; changes to profile fields that do not alter the meals (for example budget) do not trigger a rebuild. |
 | KL-08 | Nutrition and training output are AI estimates, not medical advice. |
 | KL-09 | The coach rules for water and check-ins only fire on existing data, because there is no logging screen for them. |
@@ -620,3 +622,4 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | 1.5 | 2026-11-11 | Dead code for features not in the UI deleted (RM-07); `app.js` split into modules with shared state; monkey patches replaced; Add-a-meal modal form; inline styles and `unsafe-inline` removed; CSS pruned; Lucide icons, sentence-case labels, data-driven sidebar summary; Coach chat visibility bug fixed; SECURITY DEFINER audit (SEC-07); mocked-backend UI tests and in-process Postgres tests; migration for complete plan undo written and applied to production (OI-19) |
 | 1.6 | 2026-11-10 | Grocery and prep are AI-generated from the live plan and follow it (PREP-01 to 11, AISVC-09, `lists` action, edge function v54, `the-cut-plan-v3` / `the-cut-lists-v1`); weeks start on Sunday; mid-week plan changes rebuild the rest of the week only; sentence-case category headers; seeded default targets removed; `list_generations` table and `replace_generated_lists` RPC (tables 27, functions 18, policies 41); unit 44, db 14, ui 27; OI-20, KL-14/15; principle: nothing hard-coded |
 | 1.7 | 2026-11-10 | "Delete plan & start fresh" (PLAN-25, `reset_plan` RPC, migration `20261113_reset_plan` applied to production); functions 19; db 19 tests, ui 28 |
+| 1.8 | 2026-11-10 | Lists are generated with the plan (background, with a ready toast) instead of on opening Prep; Prep shows a Generate button when empty; Meal-prep count refresh fix (PREP-06, 07, 12; KL-16); ui tests 29 |

@@ -4,7 +4,7 @@ import { S } from './state.js';
 import { $, SUPABASE_KEY, SUPABASE_URL, q, supabase } from './client.js';
 import { ackState } from './coach.js';
 import { ensureDay, ensureTemplates, loadDay } from './meals.js';
-import { markListsStale } from './prep.js';
+import { ensureLists, markListsStale } from './prep.js';
 import { card, foldCard, pageHead, render } from './shell.js';
 import { fail, toast, toastUndo, uiConfirm } from './ui.js';
 
@@ -595,6 +595,7 @@ export async function loadModule() {
 export async function applyAIPlan(...a) {
   markListsStale();
   const r = await applyAIPlanCore(...a);
+  if (r) ensureLists({ notify: true }); // build the grocery list and prep with the plan, in the background
   try {
     ackState();
   } catch (e) {}
@@ -650,7 +651,6 @@ export async function resetPlan() {
       fiber_target_g: null,
       water_target_ml: null,
     };
-    S.listsKey = '';
     markListsStale();
     S.tab = 'ai';
     await render();

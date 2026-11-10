@@ -12,8 +12,7 @@ export const S = {
   // AI-built grocery/prep lists: busy while building, error text if the last build failed, dirty after the plan changes
   listsBusy: false,
   listsError: '',
-  listsDirty: true,
-  listsKey: '',
+  listsDirty: false,
   listsRev: 0,
   toastTimer: undefined,
   templateHistory: [],

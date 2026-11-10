@@ -302,16 +302,40 @@ test('prep: category headers are in sentence case and grouped from the data', as
   expect(app.errors).toEqual([]);
 });
 
-test("prep: nothing is rebuilt when the plan has not changed since this week's lists were built", async ({ page }) => {
+test('prep: opening the tab and switching views never asks the AI', async ({ page }) => {
   const app = await openApp(page);
   await go(page, 'prep');
   await expect(page.locator('[data-grocery]').first()).toBeVisible();
-  await expect.poll(() => lists(app).length).toBe(1); // asked once; the server answers "current"
-  const g = (await rows(app, 'grocery_items')).map((x) => x.name).sort();
-  expect(g).toEqual(['Bananas', 'Chicken breast', 'Greek yogurt', 'Oats', 'Whole eggs']);
   await page.locator('[data-prepview="prep"]').click();
   await page.locator('[data-prepview="grocery"]').click();
-  expect(lists(app).length).toBe(1); // switching views does not ask again
+  expect(lists(app).length).toBe(0);
+  const g = (await rows(app, 'grocery_items')).map((x) => x.name).sort();
+  expect(g).toEqual(['Bananas', 'Chicken breast', 'Greek yogurt', 'Oats', 'Whole eggs']);
+});
+
+test('prep: with no lists yet it offers Generate, and one click fills both groceries and meal prep', async ({
+  page,
+}) => {
+  const app = await openApp(page);
+  await page.evaluate(() => {
+    const T = window.__FAKE.tables;
+    T.grocery_items = [];
+    T.prep_tasks = [];
+    T.list_generations = [];
+  });
+  await go(page, 'prep');
+  await expect(page.getByText('Need help with meal prep and groceries?')).toBeVisible();
+  expect(lists(app).length).toBe(0); // nothing starts by itself
+  await page.getByRole('button', { name: 'Generate', exact: true }).click();
+  await expect(page.locator('[data-grocery]').first()).toBeVisible();
+  const n = await page.locator('[data-grocery]').count();
+  await expect(page.locator('[data-prepview="grocery"] small')).toHaveText(`0/${n}`);
+  // the Meal prep count must follow too (it used to stay at 0/0 until you switched tabs)
+  await expect(page.locator('[data-prepview="prep"] small')).toHaveText('0/1');
+  await page.locator('[data-prepview="prep"]').click();
+  await expect(page.locator('[data-prep]')).toHaveCount(1);
+  expect(lists(app).length).toBe(1);
+  expect(app.errors).toEqual([]);
 });
 
 test('prep: going vegetarian mid-week replaces chicken in the groceries and prep, and keeps what was ticked or is history', async ({
@@ -322,9 +346,12 @@ test('prep: going vegetarian mid-week replaces chicken in the groceries and prep
   await page.getByRole('button', { name: 'Apply to my workspace' }).click();
   await page.locator('#uiConfirm [data-act="1"]').click();
   await expect(page.locator('.plan-now h2')).toHaveText('Lean bulk, 2,800 kcal');
-  await go(page, 'prep');
+  // built in the background with the plan: nobody opened the Prep tab yet
   await expect.poll(async () => (await rows(app, 'grocery_items')).some((g) => g.name === 'Soya chunks')).toBe(true);
+  expect(lists(app).length).toBe(1);
+  await go(page, 'prep');
   await expect(page.locator('[data-grocery]').first()).toBeVisible();
+  await expect(page.locator('[data-prepview="prep"] small')).not.toHaveText('0/0');
   const g = (await rows(app, 'grocery_items')).map((x) => x.name);
   expect(g).not.toContain('Chicken breast'); // unticked AI item of the old plan is gone
   expect(g).toContain('Whole eggs'); // already bought: stays, now the user's own item
@@ -358,11 +385,12 @@ test('prep: Regenerate asks the AI again and a failure shows a message with Try 
   await expect(page.getByText('The AI service is busy. Try again in a minute.')).toBeVisible();
   await page.locator('[data-prepview="prep"]').click();
   await page.locator('[data-prepview="grocery"]').click();
-  expect(lists(app).length).toBe(2); // the initial check plus the forced one; no automatic retry
+  expect(lists(app).length).toBe(1); // only the forced one; no automatic retry
   fail = false;
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByText('The AI service is busy. Try again in a minute.')).toHaveCount(0);
   expect(lists(app).filter((c) => c.force).length).toBe(2);
+  expect(lists(app).length).toBe(2);
   expect(lists(app).every((c) => c.week_start === '2026-11-08' && c.today === '2026-11-10')).toBe(true); // Sunday week
 });
 

@@ -46,6 +46,7 @@ import {
   deleteRow,
   ensureLists,
   loadGroceries,
+  loadPrep,
   prepV3,
   updateGrocery,
   updatePrep,
@@ -169,7 +170,7 @@ export async function render() {
     if (S.tab === 'weight') await loadWeight();
     if (S.tab === 'prep') {
       await loadGroceries();
-      ensureLists(); // not awaited: the page shows its building state while the AI works
+      await loadPrep(); // the day's prep tasks may have just been written by a background build
     }
     if (S.tab === 'workout' || S.tab === 'coach') {
       await loadPlanHistory();
