@@ -32,6 +32,7 @@ function rfPaint(){
 }
 let aiUnlocked=false,insights=[],insightsEnabled=true,insightChannel=null,coachReview=null;
 let _modalOpener=null,_manualSignOut=false;
+const pwc=p=>'pw-'+Math.max(0,Math.min(100,Math.round(Number(p)||0)));
 async function q(p){let {data,error}=await p;if(error)throw error;return data}
 async function bootstrap(){user=session.user; if(!user){renderAuthV2();return} $('#root').innerHTML='<div class="authwrap"><div class="authcard"><span class="loader"></span> Loading your workspace…</div></div>';
 try{
@@ -64,11 +65,11 @@ const LEGACY_TABS={overview:'ai',nutrition:'meals',habits:'meals',training:'work
 function navBtn([id,ico,label,short],mobile){const locked=!aiUnlocked&&id!=='ai',cls=(tab===id?'active':'')+(locked?' locked':'')+(id==='ai'?' ai-first':'');
  return mobile?`<button data-tab="${id}" class="${cls}" ${locked?'aria-disabled="true"':''}><span>${locked?'🔒':ico}</span>${short}</button>`:`<button class="${cls}" data-tab="${id}" ${locked?'aria-disabled="true" title="Generate your first AI plan to unlock"':''}><span class="ico">${ico}</span>${label}${locked?'<span class="lock">🔒</span>':''}</button>`}
 function nav(){return `<aside class="sidebar"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>YOUR WORKSPACE</small></div></div><div class="nav-label">YOUR WORKSPACE</div><nav class="nav">${NAV_ITEMS.map(x=>navBtn(x)).join('')}</nav><div class="side-spacer"></div><div class="sidebar-note"><strong>THE DAILY RULE</strong>Make the next good choice. Then repeat.</div><div class="side-status"><i class="dot"></i>Cloud sync enabled</div></aside>`}
-function header(){return `<header class="topbar${DATE_TABS.includes(tab)?'':' nodate'}"><div class="crumb">THE CUT / <b>${((NAV_ITEMS.find(x=>x[0]===tab)||[0,0,tab])[2]).toUpperCase()}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${date}" max="${today()}" style="width:145px;padding:6px 8px;font-size:11px"/><button class="pill" id="next" ${date>=today()?'disabled':''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">${bellHTML()}</button><span class="pill">${esc(user.email)}</span><button class="userpill" id="acctBtn" title="Account" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false">${esc((user.user_metadata?.name||user.email||'U').slice(0,1).toUpperCase())}</button></div></header>`}
+function header(){return `<header class="topbar${DATE_TABS.includes(tab)?'':' nodate'}"><div class="crumb">THE CUT / <b>${((NAV_ITEMS.find(x=>x[0]===tab)||[0,0,tab])[2]).toUpperCase()}</b></div><div class="top-actions"><button class="pill" id="prev">←</button><input type="date" id="date" value="${date}" max="${today()}" class="u-topdate"/><button class="pill" id="next" ${date>=today()?'disabled':''}>→</button><button class="pill" id="bell" title="Coach insights" aria-label="Coach insights">${bellHTML()}</button><span class="pill">${esc(user.email)}</span><button class="userpill" id="acctBtn" title="Account" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false">${esc((user.user_metadata?.name||user.email||'U').slice(0,1).toUpperCase())}</button></div></header>`}
 function pageHead(k,title,sub,extra=''){return `<div class="pagehead"><div><div class="eyebrow">${k}</div><h1>${title}<em>.</em></h1><p class="subtitle">${sub}</p></div>${extra}</div>`}
 function foldCard(title,body){return `<details class="card fold"><summary>${title}<span class="muted small">Edit</span></summary>${body}</details>`}
 function card(title,body,extra=''){return `<section class="card"><div class="section-title"><h2>${title}</h2>${extra}</div>${body}</section>`}
-function metric(label,value,unit,foot){return `<div class="card metric"><div class="label">${label}</div><strong>${value} <span class="muted" style="font-size:13px">${unit}</span></strong><small>${foot}</small></div>`}
+function metric(label,value,unit,foot){return `<div class="card metric"><div class="label">${label}</div><strong>${value} <span class="muted u-fs13">${unit}</span></strong><small>${foot}</small></div>`}
 function mealRows(){return day.meals.map((m,i)=>{let t=getTemplate(m),plan=t?.meal_template_items||[],tot=plan.find(x=>x.food_name_snapshot==='__plan_total__');return `<div class="meal"><div class="meal-index">0${i+1}</div><div><h3>${esc(m.meal_name)}</h3><div class="meta">${(m.planned_time||'').slice(0,5)} · ${plan.filter(x=>x.food_name_snapshot!=='__plan_total__').map(x=>`${esc(x.food_name_snapshot)} (${esc(x.unit)})`).join(' · ')}</div></div><div class="kcal">${fmt(tot?.calories_kcal)} <small>kcal · ${fmt(tot?.protein_g)} g protein</small></div><div class="row meal-action"><button class="check ${m.status==='completed'?'done':''}" data-meal="${m.id}" title="Mark complete">${m.status==='completed'?'✓':'○'}</button></div></div>`}).join('')||'<div class="empty">No meal templates. Add one in Nutrition.</div>'}
 
 function aiPlanStatusCard(){
@@ -81,7 +82,7 @@ function aiPlanStatusCard(){
 function aiPlannerPage(){
  const r=aiPlanDraft||aiPlanHistory.find(x=>x.status==='active')||aiPlanHistory[0]||null,p=r?.inputs||{},v=(k,d='')=>esc(p[k]??d),opts=(k,a)=>{const selected=p[k]===null||p[k]===undefined||p[k]===''?'':String(p[k]);return (selected===''?'<option value="" selected disabled>Choose…</option>':'')+a.map(([x,y])=>`<option value="${x}" ${selected===String(x)?'selected':''}>${y}</option>`).join('')};
  return `${pageHead('PERSONALIZED PLANNING · AI ASSISTANT','AI Planner','Tell the AI about you. Your plan lands in Meals, Workout and Prep.')}
- <div class="notice" style="margin-bottom:13px">Estimates only, not medical nutrition therapy. Every new plan applies straight away. You can undo it.</div>
+ <div class="notice u-mb13">Estimates only, not medical nutrition therapy. Every new plan applies straight away. You can undo it.</div>
  ${aiPlanStatusCard()}
  <div class="ai-page"><div class="grid g2 ai-forms">${(r?foldCard:card)('Your details',`<form id="aiIntakeForm" class="ai-intake-grid">
  <div class="ai-section-title ai-wide">01 · Body profile and goal</div><div class="field"><label>AGE (18+)</label><input name="age_years" type="number" min="18" max="100" required value="${v('age_years')}" placeholder="Years"/></div><div class="field"><label>SEX FOR ENERGY ESTIMATE</label><select name="sex">${opts('sex',[['prefer_not_to_say','Prefer not to say'],['male','Male'],['female','Female']])}</select></div>
@@ -94,9 +95,9 @@ function aiPlannerPage(){
  <div class="field"><label>LOCATION / FOOD MARKET</label><input name="location" value="${v('location')}" placeholder="City, country"/></div><div class="field"><label>TIMELINE (WEEKS)</label><input name="goal_timeline_weeks" type="number" min="1" max="104" value="${v('goal_timeline_weeks')}" placeholder="Optional"/></div>
  <div class="ai-section-title ai-wide">04 · Constraints and preferences</div><div class="field ai-wide"><label>ALLERGIES / FOODS TO AVOID</label><input name="allergies" value="${v('allergies')}" placeholder="Ingredients to exclude"/></div><div class="field ai-wide"><label>FOODS YOU LIKE</label><input name="food_preferences" value="${v('food_preferences')}" placeholder="Chicken, eggs, dal, rice, curd..."/></div>
  <div class="field ai-wide"><label>PREFERRED CUISINES</label><input name="preferred_cuisines" value="${v('preferred_cuisines')}" placeholder="Indian home food, North Indian..."/></div><div class="field ai-wide"><label>OTHER CONSTRAINTS</label><textarea name="additional_notes" rows="3" placeholder="Work shifts, meal timing, equipment, disliked foods...">${v('additional_notes')}</textarea></div>
- <label class="row ai-wide" style="font-size:12px;color:var(--muted)"><input type="checkbox" name="adult_confirmed" required ${p.adult_confirmed?'checked':''}/> I am 18 or older and understand this is general wellness information, not medical advice.</label>
+ <label class="row ai-wide u-fs12m"><input type="checkbox" name="adult_confirmed" required ${p.adult_confirmed?'checked':''}/> I am 18 or older and understand this is general wellness information, not medical advice.</label>
  <div class="ai-wide"><button class="btn primary" id="aiProfileAction" type="submit">${r?'Analyze edits & refine plan':'Generate my AI plan'}</button> ${r?'<button class="btn" type="button" data-ai-generate-new>Generate a fresh plan</button>':''} <span class="ai-muted">Your profile stays editable. When you submit changes, the AI compares them with the previous plan, explains the implications and creates a reviewable draft.</span></div><div class="ai-wide ai-muted" id="aiEditPreview" aria-live="polite"></div></form>`)}
- ${r?(rfEnsure(),card('Refine plan',`<form id="aiRefineForm"><div class="notice warn rf-note ${rfInterrupted?'':'hidden'}" role="status" style="margin-bottom:10px">Your last refine didn’t finish because the page was closed or reloaded. Your text is back below. Tap Refine &amp; apply to send it again.</div><div class="field"><textarea name="instruction" rows="2" required aria-label="What should change?" placeholder="e.g. swap paneer for tofu, shorter prep" ${rfBusy()?'readonly':''}>${esc(rf.text)}</textarea></div><button class="btn primary${rfBusy()?' busy':''}" type="submit" ${rfBusy()?'disabled':''}>${rfBusy()?'Thinking…':'Refine &amp; apply'}</button></form>`)):''}</div></div>`;
+ ${r?(rfEnsure(),card('Refine plan',`<form id="aiRefineForm"><div class="notice warn rf-note ${rfInterrupted?'':'hidden'} u-mb10" role="status">Your last refine didn’t finish because the page was closed or reloaded. Your text is back below. Tap Refine &amp; apply to send it again.</div><div class="field"><textarea name="instruction" rows="2" required aria-label="What should change?" placeholder="e.g. swap paneer for tofu, shorter prep" ${rfBusy()?'readonly':''}>${esc(rf.text)}</textarea></div><button class="btn primary${rfBusy()?' busy':''}" type="submit" ${rfBusy()?'disabled':''}>${rfBusy()?'Thinking…':'Refine &amp; apply'}</button></form>`)):''}</div></div>`;
 }
 async function callAIPlanner(action,profile,extra={}){
  const {data:{session:s}}=await supabase.auth.getSession();if(!s?.access_token)throw new Error('Session expired. Sign in again.');
@@ -304,9 +305,9 @@ function coachPanel(full){
  if(!insightsEnabled&&!coachReview)return full?`<section class="card coach" id="coach"><div class="eyebrow">YOUR COACH</div><p class="muted small">The coach feed is not enabled on this environment yet.</p></section>`:'';
  const list=insights.filter(i=>!i.dismissed_at).slice(0,full?8:3);
  const rows=list.map(insightRow).join('');
- const empty='<p class="muted small" style="margin-top:10px">Nothing flagged right now. As you log meals, workouts, water, check-ins and weight, I watch the trends and speak up when something drifts. Days with no logs count as unknown, never as zero.</p>';
+ const empty='<p class="muted small u-mt10">Nothing flagged right now. As you log meals, workouts, water, check-ins and weight, I watch the trends and speak up when something drifts. Days with no logs count as unknown, never as zero.</p>';
  const rv=coachReview?`<div class="coach-review"><strong>${esc(coachReview.headline||'Weekly review')}</strong><p>${esc(coachReview.summary||'')}</p>${(coachReview.suggestions||[]).map(x=>`<p>• ${esc(x)}</p>`).join('')}${coachReview.should_refine&&getAIBasePlan()?'<p><button class="btn" id="refineFromReview">Draft a plan update from this</button></p>':''}</div>`:'';
- return `<section class="card coach" id="coach"><div class="ai-plan-head"><div><div class="eyebrow">YOUR COACH · WATCHING YOUR DATA LIVE</div><h2 style="margin:4px 0 0">What I noticed</h2></div>${full&&getAIBasePlan()?'<button class="btn primary" id="reviewWeek">Review my week</button>':''}</div>${rv}${rows||(rv?'':empty)}${full&&getAIBasePlan()?coachChatHtml():''}</section>`;
+ return `<section class="card coach" id="coach"><div class="ai-plan-head"><div><div class="eyebrow">YOUR COACH · WATCHING YOUR DATA LIVE</div><h2 class="u-m4-0-0">What I noticed</h2></div>${full&&getAIBasePlan()?'<button class="btn primary" id="reviewWeek">Review my week</button>':''}</div>${rv}${rows||(rv?'':empty)}${full&&getAIBasePlan()?coachChatHtml():''}</section>`;
 }
 async function markInsightsRead(){
  const ids=insights.filter(i=>!i.read_at&&!i.dismissed_at).map(i=>i.id);if(!ids.length)return;
@@ -344,7 +345,7 @@ function insightRow(i){
 }
 function coachChatHtml(){
  const msgs=coachChat.map(m=>`<div class="chat-msg ${m.role}"><b>${m.role==='user'?'You':'Coach'}</b><p>${esc(m.content)}</p>${m.draft_id?`<p><button class="btn small primary" data-open-draft="${esc(m.draft_id)}">Review the draft plan</button></p>`:''}</div>`).join('');
- return `<div class="coach-chat" id="coachChat"><div class="eyebrow" style="margin-top:14px">ASK YOUR COACH</div>${msgs}<form id="coachChatForm" class="chat-form"><input name="msg" placeholder="Ask about your plan, your week, or tell me what you want to change…" maxlength="1500" autocomplete="off" ${coachChatBusy?'disabled':''}/><button class="btn primary small" ${coachChatBusy?'disabled':''}>${coachChatBusy?'Thinking…':'Send'}</button></form></div>`;
+ return `<div class="coach-chat" id="coachChat"><div class="eyebrow u-mt14">ASK YOUR COACH</div>${msgs}<form id="coachChatForm" class="chat-form"><input name="msg" placeholder="Ask about your plan, your week, or tell me what you want to change…" maxlength="1500" autocomplete="off" ${coachChatBusy?'disabled':''}/><button class="btn primary small" ${coachChatBusy?'disabled':''}>${coachChatBusy?'Thinking…':'Send'}</button></form></div>`;
 }
 function scheduleAssess(delay=20000){
  if(!insightsEnabled||!aiUnlocked)return;
@@ -393,7 +394,7 @@ async function saveTrainingWeek(e){
 function trainingWeekEditor(){
  const w=(getAIBasePlan()?.status==='active'?getAIBasePlan():aiPlanHistory.find(x=>x.status==='active'))?.plan?.training_week||[];
  if(!aiPlanHistory.some(x=>x.status==='active'))return '';
- return `<div style="margin-bottom:14px">${card('Edit your training week',`<p class="muted small">One day per line: Day | Focus | minutes | exercise, exercise. Your coach reviews changes and tells you if it agrees.</p><form id="trainingWeekForm"><textarea name="week" rows="6" style="width:100%">${esc(w.map(d=>`${d.day} | ${d.focus} | ${d.session_minutes||0} | ${(d.exercises||[]).join(', ')}`).join('\n'))}</textarea><button class="btn primary small" style="margin-top:8px">Save training week</button></form>`)}</div>`;
+ return `<div class="u-mb14">${card('Edit your training week',`<p class="muted small">One day per line: Day | Focus | minutes | exercise, exercise. Your coach reviews changes and tells you if it agrees.</p><form id="trainingWeekForm"><textarea name="week" rows="6" class="u-w100">${esc(w.map(d=>`${d.day} | ${d.focus} | ${d.session_minutes||0} | ${(d.exercises||[]).join(', ')}`).join('\n'))}</textarea><button class="btn primary small u-mt8">Save training week</button></form>`)}</div>`;
 }
 
 function wireCoach(){
@@ -441,11 +442,11 @@ async function exportData(){
  try{const profile=await q(supabase.from('profiles').select('*').eq('id',user.id).maybeSingle());backup.data.profiles=profile?[profile]:[];for(const table of tables){let rows=[],offset=0,batch=[];do{batch=await q(supabase.from(table).select('*').eq('user_id',user.id).range(offset,offset+999));rows=rows.concat(batch);offset+=batch.length}while(batch.length===1000);backup.data[table]=rows}const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='the-cut-backup-'+today()+'.json';document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Your JSON backup has been generated.');return true}catch(e){fail(e);return false}
 }
 function renderPasswordRecovery(){
- $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>ACCOUNT RECOVERY</small></div></div><h1>Set a new password.</h1><p class="muted">Choose a new password for your account.</p><form id="recoverForm"><div class="field"><label>NEW PASSWORD</label><input name="password" type="password" minlength="8" required autocomplete="new-password"/></div><div class="field"><label>CONFIRM PASSWORD</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"/></div><button class="btn primary" style="width:100%">Update password</button><p class="muted small" id="recoverMsg"></p></form></div></div>`;
+ $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>ACCOUNT RECOVERY</small></div></div><h1>Set a new password.</h1><p class="muted">Choose a new password for your account.</p><form id="recoverForm"><div class="field"><label>NEW PASSWORD</label><input name="password" type="password" minlength="8" required autocomplete="new-password"/></div><div class="field"><label>CONFIRM PASSWORD</label><input name="confirm" type="password" minlength="8" required autocomplete="new-password"/></div><button class="btn primary u-w100">Update password</button><p class="muted small" id="recoverMsg"></p></form></div></div>`;
  $('#recoverForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),p=f.get('password');if(p!==f.get('confirm')){$('#recoverMsg').textContent='Passwords do not match.';uiModal({title:'Passwords don\u2019t match',body:'Type the same new password in both fields.',actions:[{label:'OK',primary:true}]});return}const b=e.currentTarget.querySelector('button');b.disabled=true;try{const {error}=await supabase.auth.updateUser({password:p});if(error)throw error;recoveryMode=false;session=(await supabase.auth.getSession()).data.session;toast('Password updated');await bootstrap()}catch(err){const f=friendlyError(err);$('#recoverMsg').textContent=f.title+'.';uiModal({title:f.title,body:f.body,actions:[{label:'OK',primary:true}]})}finally{b.disabled=false}};
 }
 function renderAuthV2(){
- $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><h1>Own the process.</h1><p class="muted">Your nutrition, training and progress. One private workspace.</p><div class="authswitch"><button class="btn primary" id="modeIn">Sign in</button><button class="btn" id="modeUp">Create account</button></div><form id="authForm"><div id="nameField" class="field hidden"><label>YOUR NAME</label><input name="name" autocomplete="name" placeholder="Name"/></div><div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"/></div><div class="field"><label>PASSWORD</label><div class="pw"><input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"/><button type="button" class="pwtoggle" id="pwToggle" aria-label="Show password" aria-pressed="false">Show</button></div></div><button class="btn primary" style="width:100%;margin-top:8px" type="submit">Sign in</button><button class="btn ghost" id="forgotPass" style="width:100%;margin-top:8px" type="button">Forgot password?</button><p class="muted small" id="authMsg">Your account is secured with Supabase authentication.</p></form><p class="muted small">Your private tracking data is protected by per-account database policies.</p></div></div>`;
+ $('#root').innerHTML=`<div class="authwrap"><div class="authcard"><div class="brand"><div class="mark"></div><div><b>THE CUT<span>.</span></b><small>DAILY TRANSFORMATION SYSTEM</small></div></div><h1>Own the process.</h1><p class="muted">Your nutrition, training and progress. One private workspace.</p><div class="authswitch"><button class="btn primary" id="modeIn">Sign in</button><button class="btn" id="modeUp">Create account</button></div><form id="authForm"><div id="nameField" class="field hidden"><label>YOUR NAME</label><input name="name" autocomplete="name" placeholder="Name"/></div><div class="field"><label>EMAIL</label><input name="email" type="email" required autocomplete="email" placeholder="you@example.com"/></div><div class="field"><label>PASSWORD</label><div class="pw"><input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"/><button type="button" class="pwtoggle" id="pwToggle" aria-label="Show password" aria-pressed="false">Show</button></div></div><button class="btn primary u-w100 u-mt8" type="submit">Sign in</button><button class="btn ghost u-w100 u-mt8" id="forgotPass" type="button">Forgot password?</button><p class="muted small" id="authMsg">Your account is secured with Supabase authentication.</p></form><p class="muted small">Your private tracking data is protected by per-account database policies.</p></div></div>`;
  let mode='in';const setMode=m=>{mode=m;$('#modeIn').classList.toggle('primary',m==='in');$('#modeUp').classList.toggle('primary',m==='up');$('#nameField').classList.toggle('hidden',m==='in');$('#authForm button[type=submit]').textContent=m==='in'?'Sign in':'Create account';$('#authMsg').textContent=m==='in'?'Use your account email and password.':'We may send a verification link to your email.';$('input[name=password]').autocomplete=m==='in'?'current-password':'new-password'};
  $('#modeIn').onclick=()=>setMode('in');$('#modeUp').onclick=()=>setMode('up');
  $('#pwToggle').onclick=()=>{const i=$('input[name=password]'),t=$('#pwToggle'),show=i.type==='password';i.type=show?'text':'password';t.textContent=show?'Hide':'Show';t.setAttribute('aria-pressed',String(show));t.setAttribute('aria-label',show?'Hide password':'Show password')};
@@ -462,7 +463,7 @@ const DATE_TABS=['meals','prep'];
 const needsPlanCard=what=>`<div class="card empty-plan"><div class="eyebrow">NEXT STEP</div><h2>Apply your plan to start ${what}</h2><p class="muted">Your targets, meals and sessions come from your plan. Open it, review it, then press Apply.</p><button class="btn primary" data-tab="ai">Open my plan</button></div>`;
 async function loadActivePlan(){const r=await q(supabase.from('ai_plan_versions').select('*').eq('user_id',user.id).eq('status','active').order('applied_at',{ascending:false,nullsFirst:false}).limit(1));aiActivePlan=r[0]||null}
 async function loadPlanHistory(){aiPlanHistory=await q(supabase.from('ai_plan_versions').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(10))}
-const bar3=(label,val,target,unit)=>{const pct=Math.min(100,Number(val)/Math.max(1,Number(target))*100);return `<div class="mbar"><div class="row between"><span>${label}</span><b>${fmt(val)} <small>/ ${fmt(target)} ${unit}</small></b></div><div class="progress"><i style="width:${pct}%"></i></div></div>`};
+const bar3=(label,val,target,unit)=>{const pct=Math.min(100,Number(val)/Math.max(1,Number(target))*100);return `<div class="mbar"><div class="row between"><span>${label}</span><b>${fmt(val)} <small>/ ${fmt(target)} ${unit}</small></b></div><div class="progress"><i class="${pwc(pct)}"></i></div></div>`};
 
 /* ---------- Meals ---------- */
 function mealsV3(){
@@ -471,8 +472,8 @@ function mealsV3(){
  return `${pageHead('DIET · '+dateFmt(date),'Meals','Tick each meal as you eat it. Log anything extra below.')}${planChangeCard()}
  <div class="mpage"><div class="grid g2 m-top">${card('Today vs your plan',bar3('Calories',t.k,tg.calories_kcal,'kcal')+bar3('Protein',t.p,tg.protein_g,'g'))}
  ${card('Add something extra',`<form id="foodForm" class="formgrid"><div class="field full"><label>WHAT DID YOU EAT?</label><input name="food_name_snapshot" required placeholder="e.g. protein shake"/></div><div class="field"><label>CALORIES</label><input name="calories_kcal" type="number" min="0" step="0.1" inputmode="decimal" value="" required/></div><div class="field"><label>PROTEIN (G)</label><input name="protein_g" type="number" min="0" step="0.1" inputmode="decimal" value="0"/></div><input type="hidden" name="quantity" value="1"/><input type="hidden" name="unit" value="serving"/><input type="hidden" name="carbs_g" value="0"/><input type="hidden" name="fat_g" value="0"/><input type="hidden" name="fiber_g" value="0"/><button class="btn primary full">Add</button></form>`)}</div>
- <div class="m-meals" style="margin-top:16px">${card('Your meals',mealRows()+`<div class="row wrap" style="margin-top:12px"><button class="btn" id="addMealTemplate">+ Add a meal</button></div>`)}</div>
- ${day.entries.length?`<div class="m-extras" style="margin-top:16px">${card('Extras logged',day.entries.map(e=>`<div class="listitem"><div class="grow"><strong>${esc(e.food_name_snapshot)}</strong><small>${fmt(e.calories_kcal)} kcal · ${fmt(e.protein_g)} g protein</small></div><button class="btn sm danger" data-delfood="${e.id}">Delete</button></div>`).join(''))}</div>`:''}</div>`;
+ <div class="m-meals u-mt16">${card('Your meals',mealRows()+`<div class="row wrap u-mt12"><button class="btn" id="addMealTemplate">+ Add a meal</button></div>`)}</div>
+ ${day.entries.length?`<div class="m-extras u-mt16">${card('Extras logged',day.entries.map(e=>`<div class="listitem"><div class="grow"><strong>${esc(e.food_name_snapshot)}</strong><small>${fmt(e.calories_kcal)} kcal · ${fmt(e.protein_g)} g protein</small></div><button class="btn sm danger" data-delfood="${e.id}">Delete</button></div>`).join(''))}</div>`:''}</div>`;
 }
 
 /* ---------- Weight ---------- */
@@ -488,9 +489,9 @@ function weightV3(){
  const delta=cur!=null&&first!=null?cur-first:null;
  return `${pageHead('BODY WEIGHT','Weight','One number, logged regularly. The trend matters, not any single day.')}
  <div class="grid g3">${metric('CURRENT',cur!=null?fmt(cur):'—','kg',wRows.length?dateFmt(wRows[wRows.length-1].measured_on,{day:'numeric',month:'short'}):'No weigh-ins yet')}${metric('CHANGE',delta!=null?(delta>0?'+':'')+fmt(delta):'—','kg','Since your first weigh-in')}${metric('GOAL',goal?fmt(goal):'—','kg',goal&&cur!=null?fmt(Math.abs(cur-goal))+' kg to go':'Set in your plan')}</div>
- <div class="grid g2" style="margin-top:16px">${card('Trend',spark(vals.slice(-60),goal))}
+ <div class="grid g2 u-mt16">${card('Trend',spark(vals.slice(-60),goal))}
  ${card('Log weight',`<form id="weightForm" class="formgrid"><div class="field"><label>DATE</label><input type="date" name="measured_on" value="${today()}" max="${today()}" required/></div><div class="field"><label>WEIGHT (KG)</label><input name="weight_kg" type="number" step="0.1" min="20" max="500" inputmode="decimal" required placeholder="80.0"/></div><button class="btn primary full">Save weigh-in</button></form><p class="muted small">Logging the same date again replaces that day's entry.</p>`)}</div>
- <div style="margin-top:16px">${card('History',wRows.length?wRows.slice().reverse().slice(0,12).map(r=>`<div class="listitem"><div class="grow"><strong>${fmt(r.weight_kg)} kg</strong><small>${dateFmt(r.measured_on,{day:'numeric',month:'short',year:'numeric'})}</small></div><button class="btn sm danger" data-delweight="${r.id}">Delete</button></div>`).join(''):'<div class="empty">No weigh-ins yet.</div>')}</div>`;
+ <div class="u-mt16">${card('History',wRows.length?wRows.slice().reverse().slice(0,12).map(r=>`<div class="listitem"><div class="grow"><strong>${fmt(r.weight_kg)} kg</strong><small>${dateFmt(r.measured_on,{day:'numeric',month:'short',year:'numeric'})}</small></div><button class="btn sm danger" data-delweight="${r.id}">Delete</button></div>`).join(''):'<div class="empty">No weigh-ins yet.</div>')}</div>`;
 }
 async function saveWeightV3(e){
  e.preventDefault();const f=new FormData(e.currentTarget),on=f.get('measured_on'),kg=Number(f.get('weight_kg'));
@@ -510,7 +511,7 @@ function prepV3(){
  if(!aiActivePlan)return pageHead('PREP & GROCERY','Prep & Grocery','Shopping list and meal prep.')+needsPlanCard('shopping and prep');
  const bought=groceries.filter(x=>x.is_purchased).length,donePrep=day.prep.filter(x=>x.is_completed).length;
  const cats=['PROTEIN','DAIRY','PRODUCE','PANTRY'];
- const groc=`<form id="groceryForm" class="row addrow"><input name="name" required placeholder="Add an item"/><input name="quantity" placeholder="Qty" style="max-width:110px"/><input type="hidden" name="category" value="PRODUCE"/><button class="btn primary">Add</button></form>
+ const groc=`<form id="groceryForm" class="row addrow"><input name="name" required placeholder="Add an item"/><input name="quantity" placeholder="Qty" class="u-maxw110"/><input type="hidden" name="category" value="PRODUCE"/><button class="btn primary">Add</button></form>
  ${groceries.length?cats.map(c=>{const items=groceries.filter(x=>(x.category||'PRODUCE')===c);return items.length?`<h3 class="eyebrow cat">${c} <span>${items.filter(x=>x.is_purchased).length}/${items.length}</span></h3>${items.map(x=>`<label class="listitem tick-row"><input type="checkbox" data-grocery="${x.id}" ${x.is_purchased?'checked':''}/><div class="grow"><strong class="${x.is_purchased?'struck':''}">${esc(x.name)}</strong><small>${esc(x.quantity||'')}</small></div><button class="btn sm ghost" data-delgrocery="${x.id}" aria-label="Remove ${esc(x.name)}">✕</button></label>`).join('')}`:''}).join(''):'<div class="empty">Nothing on the list this week.</div>'}`;
  const prep=`<form id="prepForm" class="row addrow"><input name="task" required placeholder="Add a prep task"/><button class="btn primary">Add</button></form>
  ${day.prep.length?day.prep.map(t=>`<label class="listitem tick-row"><input type="checkbox" data-prep="${t.id}" ${t.is_completed?'checked':''}/><div class="grow"><strong class="${t.is_completed?'struck':''}">${esc(t.task)}</strong></div><button class="btn sm ghost" data-delprep="${t.id}" aria-label="Remove task">✕</button></label>`).join(''):'<div class="empty">No prep tasks for this day.</div>'}`;
@@ -580,15 +581,15 @@ function wkStartView(){
  return `${pageHead('TRAINING','Workout','Open a session, log each set as you do it.')}
  ${card(ts?'Today · '+esc(ts.day):'No session planned today',ts?`<h2 class="wk-hero">${esc(ts.focus)}</h2><p class="muted small">${Number(ts.session_minutes)||0} min · ${(ts.exercises||[]).length} exercises</p><div class="wk-chips">${(ts.exercises||[]).slice(0,6).map(x=>`<span>${esc(parsePlanExercise(x).name)}</span>`).join('')}</div><button class="btn primary wk-go" data-wkstart="${ts.i}">Start workout</button>`:`<p class="muted">Rest day by your plan. You can still start a session if you want one.</p><button class="btn primary wk-go" data-wkstart="empty">Start an empty workout</button>`)}
  ${wkReviewCard()}
- ${all.length>(ts?1:0)?`<div style="margin-top:16px">${card('Other sessions in your plan',all.filter(d=>!ts||d.i!==ts.i).map(d=>`<div class="listitem"><div class="grow"><strong>${esc(d.day)} · ${esc(d.focus)}</strong><small>${Number(d.session_minutes)||0} min · ${(d.exercises||[]).length} exercises</small></div><button class="btn sm" data-wkstart="${d.i}">Start</button></div>`).join('')+`<div class="row" style="margin-top:10px"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout</button></div>`)}</div>`:(ts?`<div class="row" style="margin-top:12px"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout instead</button></div>`:'')}
- <div style="margin-top:16px">${card('Recent sessions',hist||'<div class="empty">Your finished sessions show up here with every set.</div>')}</div>
- <details class="wk-edit" style="margin-top:16px"><summary>Edit your weekly training plan</summary>${trainingWeekEditor()}</details>`;
+ ${all.length>(ts?1:0)?`<div class="u-mt16">${card('Other sessions in your plan',all.filter(d=>!ts||d.i!==ts.i).map(d=>`<div class="listitem"><div class="grow"><strong>${esc(d.day)} · ${esc(d.focus)}</strong><small>${Number(d.session_minutes)||0} min · ${(d.exercises||[]).length} exercises</small></div><button class="btn sm" data-wkstart="${d.i}">Start</button></div>`).join('')+`<div class="row u-mt10"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout</button></div>`)}</div>`:(ts?`<div class="row u-mt12"><button class="btn sm ghost" data-wkstart="empty">+ Empty workout instead</button></div>`:'')}
+ <div class="u-mt16">${card('Recent sessions',hist||'<div class="empty">Your finished sessions show up here with every set.</div>')}</div>
+ <details class="wk-edit u-mt16"><summary>Edit your weekly training plan</summary>${trainingWeekEditor()}</details>`;
 }
 function wkLive(){
  const done=wk.exs.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0),total=wk.exs.reduce((a,e)=>a+e.sets.length,0),names=[...new Set([...(aiActivePlan?.plan?.training_week||[]).flatMap(d=>(d.exercises||[]).map(x=>parsePlanExercise(x).name)),...Object.values(wkHist||{}).map(h=>h.name)])];
  return `<div class="wk">
  <div class="wk-top"><div class="grow"><input class="wk-title" id="wkTitle" value="${esc(wk.title)}" aria-label="Workout name" maxlength="60"/><div class="wk-meta"><span id="wkClock">00:00</span><span>${done}/${total} sets</span><span>${fmt(volOf(wk.exs))} kg</span></div></div><div class="row"><button class="btn ghost" id="wkDiscard">Discard</button><button class="btn primary" id="wkFinish">Finish</button></div></div>
- <div class="progress"><i style="width:${total?done/total*100:0}%"></i></div>
+ <div class="progress"><i class="${pwc(total?done/total*100:0)}"></i></div>
  <div class="wk-restpick"><span class="muted small">REST TIMER</span>${[60,90,120,180].map(s=>`<button class="chip ${wkRestDefault===s?'on':''}" data-wkrest="${s}">${s/60>=1&&s%60===0?s/60+' min':s+' s'}</button>`).join('')}</div>
  ${wk.exs.map((e,xi)=>{const h=wkHist?.[e.name.trim().toLowerCase()],prev=h?.last?h.last.map(x=>`${fmt(x.weight_kg)}×${x.reps}`).join('  ·  '):'First time — no history yet';
   return `<section class="card wk-ex"><div class="row between"><h3>${esc(e.name)}${e.pr?' <span class="pr">PR</span>':''}</h3><button class="btn sm ghost" data-wkdelex="${xi}" aria-label="Remove ${esc(e.name)}">✕</button></div><div class="wk-prev">Last time: ${prev}${e.target?` · Coach target ${fmt(e.target)} kg`:''}</div>
@@ -608,7 +609,7 @@ function wkFinishModal(){
  ${prs.length?`<p class="pr-line">New PR: ${prs.map(esc).join(', ')}</p>`:''}
  <label class="muted small">HOW HARD WAS IT? (1–10)</label><div class="rpe">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="chip" data-rpe="${n}">${n}</button>`).join('')}</div>
  <textarea id="wkNotes" rows="2" placeholder="Notes (optional)" maxlength="500"></textarea>
- <div class="row" style="margin-top:12px"><button class="btn ghost" id="wkBack">Keep going</button><button class="btn primary grow" id="wkSaveBtn">Save workout</button></div></div>`;
+ <div class="row u-mt12"><button class="btn ghost" id="wkBack">Keep going</button><button class="btn primary grow" id="wkSaveBtn">Save workout</button></div></div>`;
  document.body.appendChild(m);
  m.querySelectorAll('[data-rpe]').forEach(b=>b.onclick=()=>{wk.effort=Number(b.dataset.rpe);m.querySelectorAll('[data-rpe]').forEach(x=>x.classList.toggle('on',x===b))});
  $('#wkBack').onclick=()=>m.remove();
@@ -672,7 +673,7 @@ function fbRender(){
  <label class="muted small">HOW DID THIS FEEL?</label><div class="fb-chips" id="fbRate">${FB_RATINGS.map(([k,l])=>`<button type="button" class="chip ${e.rating===k?'on':''}" data-fbrate="${k}" aria-pressed="${e.rating===k}">${l}</button>`).join('')}</div>
  <label class="muted small">ANY ISSUES?</label><div class="fb-chips" id="fbIssues">${FB_ISSUES.map(([k,l])=>`<button type="button" class="chip ${e.issues.includes(k)?'on':''}" data-fbissue="${k}" aria-pressed="${e.issues.includes(k)}">${l}</button>`).join('')}</div>
  <textarea id="fbNote" rows="2" maxlength="300" placeholder="Anything else? e.g. left shoulder pinched on the way down (optional)">${esc(e.note)}</textarea>
- <div class="row" style="margin-top:12px"><button class="btn ghost" id="fbBack" ${fb.i?'':'disabled'}>Back</button><button class="btn primary grow" id="fbNext">${last?'Analyze my session':'Next exercise'}</button></div>
+ <div class="row u-mt12"><button class="btn ghost" id="fbBack" ${fb.i?'':'disabled'}>Back</button><button class="btn primary grow" id="fbNext">${last?'Analyze my session':'Next exercise'}</button></div>
  <button class="btn ghost fb-skip" id="fbSkip">Skip the rest and analyze</button>`;
  box.querySelectorAll('[data-fbrate]').forEach(b=>b.onclick=()=>{e.rating=e.rating===b.dataset.fbrate?'':b.dataset.fbrate;fbSave();fbRender()});
  box.querySelectorAll('[data-fbissue]').forEach(b=>b.onclick=()=>{const k=b.dataset.fbissue;e.issues=e.issues.includes(k)?e.issues.filter(x=>x!==k):[...e.issues,k];fbSave();fbRender()});
@@ -686,7 +687,7 @@ async function fbRun(){
  const f=fb;if(!f)return;
  if(aiBusy){toast('Another AI request is running. Try again in a moment.');return}
  const box=document.querySelector('#fbModal .modal');
- if(box)box.innerHTML='<div class="eyebrow">COACH REVIEW</div><h2>Analyzing your session…</h2><p class="muted small">Reading your sets and feedback, then adjusting your plan if it needs it.</p><div style="margin:18px 0"><span class="loader"></span></div>';
+ if(box)box.innerHTML='<div class="eyebrow">COACH REVIEW</div><h2>Analyzing your session…</h2><p class="muted small">Reading your sets and feedback, then adjusting your plan if it needs it.</p><div class="u-my18"><span class="loader"></span></div>';
  try{
   aiBusy=true;setAIProgress('workout');
   const withFb=f.exs.filter(e=>e.rating||e.issues.length||e.note.trim());
@@ -720,20 +721,20 @@ function wkReviewBody(r){
  const lines=r.new_week?diffWeek(r.prev_week,r.new_week):[],notes=r.change_notes||[],issues=r.issues||[];
  return `<p class="fb-analysis">${esc(r.analysis)}</p>
  ${issues.length?`<div class="fb-box"><b>What I noticed</b><ul>${issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
- ${lines.length?`<div class="fb-box"><b>${r.undone_at?'Plan change (undone)':'Your training week was updated'}</b><ul class="chg">${lines.map(l=>`<li><b>${esc(l.label)}</b><span>${esc(l.detail)}</span></li>`).join('')}</ul>${notes.length?`<p class="muted small" style="margin:8px 0 0">${notes.map(esc).join(' · ')}</p>`:''}</div>`:`<div class="fb-box"><b>No plan changes needed</b><p class="muted small" style="margin:4px 0 0">Keep running next week’s sessions as planned.</p></div>`}`;
+ ${lines.length?`<div class="fb-box"><b>${r.undone_at?'Plan change (undone)':'Your training week was updated'}</b><ul class="chg">${lines.map(l=>`<li><b>${esc(l.label)}</b><span>${esc(l.detail)}</span></li>`).join('')}</ul>${notes.length?`<p class="muted small u-m8-0-0">${notes.map(esc).join(' · ')}</p>`:''}</div>`:`<div class="fb-box"><b>No plan changes needed</b><p class="muted small u-m4-0-0">Keep running next week’s sessions as planned.</p></div>`}`;
 }
 function wkReviewUndoable(r){return !!(r&&r.id&&r.new_week&&r.prev_week&&!r.undone_at&&JSON.stringify(aiActivePlan?.plan?.training_week||[])===JSON.stringify(r.new_week))}
 function fbShowResult(r){
  const box=document.querySelector('#fbModal .modal');
  if(!box){toast(r.headline||'Session reviewed');return}
  box.classList.add('fb-result');
- box.innerHTML=`<div class="eyebrow">COACH REVIEW</div><h2>${esc(r.headline)}</h2>${wkReviewBody(r)}<div class="row" style="margin-top:14px">${wkReviewUndoable(r)?'<button class="btn ghost" id="fbUndo">Undo change</button>':''}<button class="btn primary grow" id="fbDone">Done</button></div>`;
+ box.innerHTML=`<div class="eyebrow">COACH REVIEW</div><h2>${esc(r.headline)}</h2>${wkReviewBody(r)}<div class="row u-mt14">${wkReviewUndoable(r)?'<button class="btn ghost" id="fbUndo">Undo change</button>':''}<button class="btn primary grow" id="fbDone">Done</button></div>`;
  $('#fbDone').onclick=async()=>{fbClose();await render()};
  $('#fbUndo')?.addEventListener('click',async ev=>{await undoWorkoutReview(r.id,ev.currentTarget,true)});
 }
 function fbShowError(err){
  const box=document.querySelector('#fbModal .modal');if(!box)return;
- box.innerHTML=`<div class="eyebrow">COACH REVIEW</div><h2>Couldn’t analyze that</h2><p class="muted">${esc(friendlyError(err).body.replace(/<[^>]+>/g,'')||err?.message||'Something went wrong.')} Your workout is saved. Your feedback is kept, so you can retry.</p><div class="row" style="margin-top:14px"><button class="btn ghost" id="fbClose">Close</button><button class="btn primary grow" id="fbRetry">Try again</button></div>`;
+ box.innerHTML=`<div class="eyebrow">COACH REVIEW</div><h2>Couldn’t analyze that</h2><p class="muted">${esc(friendlyError(err).body.replace(/<[^>]+>/g,'')||err?.message||'Something went wrong.')} Your workout is saved. Your feedback is kept, so you can retry.</p><div class="row u-mt14"><button class="btn ghost" id="fbClose">Close</button><button class="btn primary grow" id="fbRetry">Try again</button></div>`;
  $('#fbClose').onclick=async()=>{fbClose();await render()};
  $('#fbRetry').onclick=fbRun;
 }
@@ -751,7 +752,7 @@ async function undoWorkoutReview(id,btn,fromModal){
 }
 function wkReviewCard(){
  const r=wkReview;if(!r||Date.now()-new Date(r.created_at).getTime()>3*86400e3)return '';
- return `<div style="margin-top:16px">${card('Coach review of your last session',`<h3 style="margin-top:0">${esc(r.headline)}</h3>${wkReviewBody(r)}${wkReviewUndoable(r)?`<button class="btn" data-wkundo="${esc(r.id)}">Undo this change</button>`:''}`)}</div>`;
+ return `<div class="u-mt16">${card('Coach review of your last session',`<h3 class="u-mt0">${esc(r.headline)}</h3>${wkReviewBody(r)}${wkReviewUndoable(r)?`<button class="btn" data-wkundo="${esc(r.id)}">Undo this change</button>`:''}`)}</div>`;
 }
 
 /* ---------- wiring for the v3 pages ---------- */
@@ -768,7 +769,7 @@ function showVerifyModal(email,password){
  document.getElementById('verifyModal')?.remove();
  const m=document.createElement('div');m.className='modal-bg';m.id='verifyModal';
  m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="vmTitle"><div class="mail-ico">✉</div><h2 id="vmTitle">Verify your email</h2><p class="muted">We sent a verification link to<br><b>${esc(email)}</b>.<br>Open it, then come back here and press the button.</p><p class="muted small" id="vmMsg" role="status"></p>
- <button class="btn primary" id="vmDone" style="width:100%">I have verified</button><div class="row vm-sub"><button class="btn ghost" id="vmResend">Resend email</button><button class="btn ghost" id="vmChange">Use a different email</button></div></div>`;
+ <button class="btn primary u-w100" id="vmDone">I have verified</button><div class="row vm-sub"><button class="btn ghost" id="vmResend">Resend email</button><button class="btn ghost" id="vmChange">Use a different email</button></div></div>`;
  document.body.appendChild(m);
  const msg=t=>{$('#vmMsg').textContent=t};
  $('#vmDone').onclick=async()=>{const b=$('#vmDone');b.disabled=true;b.textContent='Checking…';try{const {data,error}=await supabase.auth.signInWithPassword({email,password});if(error){if(/confirm/i.test(error.message))msg('Not verified yet. Open the link in your email first, then try again.');else msg(error.message);return}if(!document.getElementById('verifyModal'))return;session=data.session;m.remove();await bootstrap()}catch(e){msg(e.message)}finally{b.disabled=false;b.textContent='I have verified'}};
@@ -856,13 +857,13 @@ function accountV3(){
  return `${pageHead('PROFILE · DATA · SECURITY','Account','Your details, your data and your account controls.')}
  <div class="grid g2">
  ${card('Profile',`<div class="acct-id"><div class="acct-av" aria-hidden="true">${esc((name||user.email||'U').slice(0,1).toUpperCase())}</div><div class="grow"><strong>${esc(name||'No name set')}</strong><small>${esc(user.email)}</small></div><button class="btn sm" type="button" id="acctChangeEmail">Change email</button></div>
- <form id="acctForm" style="margin-top:16px"><div class="field"><label>DISPLAY NAME</label><input name="name" value="${esc(name)}" maxlength="60" placeholder="Your name" autocomplete="name"/></div><button class="btn primary" type="submit">Save name</button></form>
+ <form id="acctForm" class="u-mt16"><div class="field"><label>DISPLAY NAME</label><input name="name" value="${esc(name)}" maxlength="60" placeholder="Your name" autocomplete="name"/></div><button class="btn primary" type="submit">Save name</button></form>
  <div class="acct-meta"><div><small>MEMBER SINCE</small><b>${since}</b></div><div><small>CURRENT PLAN</small><b>${aiActivePlan?esc(aiActivePlan.title||'Active plan'):'No plan applied'}</b></div></div>`)}
- ${card('Data & security',`<p class="muted small" style="margin-top:0">Your data is private to this account. Download a full copy any time.</p>
+ ${card('Data & security',`<p class="muted small u-mt0">Your data is private to this account. Download a full copy any time.</p>
  <div class="acct-actions"><button class="btn" id="acctExport">Download my data (JSON)</button><button class="btn" id="acctReset">Email me a password reset link</button><button class="btn" id="acctSignout">Sign out</button></div>`)}
  </div>
- ${aiPlanHistory.length?`<div style="margin-top:16px">${card('Plan history',aiPlanHistory.map(x=>`<div class="listitem"><div class="grow"><strong>${esc(x.title)}</strong><small>${dateFmt((x.created_at||'').slice(0,10),{day:'numeric',month:'short'})} · ${esc(x.status)}</small></div>${x.status==='active'?'<span class="tag">In use</span>':x.status==='draft'?'':`<button class="btn sm" data-ai-restore="${x.id}">Restore</button>`}</div>`).join(''))}</div>`:''}
- <div style="margin-top:16px"><section class="card danger-zone"><div class="section-title"><h2>Danger zone</h2></div><p class="muted" style="margin-top:0">Deleting your account permanently erases your plans, meals, workouts, weight history, photos and coach data. This cannot be undone.</p><button class="btn danger" id="acctDelete">Delete account</button></section></div>`;
+ ${aiPlanHistory.length?`<div class="u-mt16">${card('Plan history',aiPlanHistory.map(x=>`<div class="listitem"><div class="grow"><strong>${esc(x.title)}</strong><small>${dateFmt((x.created_at||'').slice(0,10),{day:'numeric',month:'short'})} · ${esc(x.status)}</small></div>${x.status==='active'?'<span class="tag">In use</span>':x.status==='draft'?'':`<button class="btn sm" data-ai-restore="${x.id}">Restore</button>`}</div>`).join(''))}</div>`:''}
+ <div class="u-mt16"><section class="card danger-zone"><div class="section-title"><h2>Danger zone</h2></div><p class="muted u-mt0">Deleting your account permanently erases your plans, meals, workouts, weight history, photos and coach data. This cannot be undone.</p><button class="btn danger" id="acctDelete">Delete account</button></section></div>`;
 }
 function closeAcctMenu(){document.getElementById('acctMenu')?.remove();document.removeEventListener('click',_acctOutside,true);document.removeEventListener('keydown',_acctEsc,true)}
 function _acctOutside(e){if(!e.target.closest('#acctMenu,#acctBtn'))closeAcctMenu()}
@@ -889,7 +890,7 @@ function wireAccount(){
 function changeEmailFlow(){
  document.getElementById('emModal')?.remove();const opener=document.activeElement;
  const m=document.createElement('div');m.className='modal-bg';m.id='emModal';
- m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="emT" style="text-align:left"><h2 id="emT" style="text-align:center">Change email</h2><p class="muted" style="text-align:center">Currently <b>${esc(user.email)}</b>. We will send a confirmation link to both your old and new address. The change applies once you confirm.</p><form id="emForm"><div class="field"><label for="emNew">NEW EMAIL</label><input id="emNew" type="email" required autocomplete="email" placeholder="you@example.com"/></div><p class="muted small" id="emMsg" role="status"></p><div class="modal-actions"><button class="btn primary" type="submit" id="emGo">Send confirmation</button><button class="btn ghost" type="button" id="emCancel">Cancel</button></div></form></div>`;
+ m.innerHTML=`<div class="modal u-tal" role="dialog" aria-modal="true" aria-labelledby="emT"><h2 id="emT" class="u-tac">Change email</h2><p class="muted u-tac">Currently <b>${esc(user.email)}</b>. We will send a confirmation link to both your old and new address. The change applies once you confirm.</p><form id="emForm"><div class="field"><label for="emNew">NEW EMAIL</label><input id="emNew" type="email" required autocomplete="email" placeholder="you@example.com"/></div><p class="muted small" id="emMsg" role="status"></p><div class="modal-actions"><button class="btn primary" type="submit" id="emGo">Send confirmation</button><button class="btn ghost" type="button" id="emCancel">Cancel</button></div></form></div>`;
  document.body.appendChild(m);const close=()=>{m.remove();document.removeEventListener('keydown',onKey,true);try{opener?.focus?.()}catch(_){}};
  const onKey=e=>{if(e.key==='Escape'){e.stopPropagation();close()}};document.addEventListener('keydown',onKey,true);
  $('#emCancel').onclick=close;$('#emNew').focus();
@@ -902,10 +903,10 @@ async function authForgotSignedIn(){try{const {error}=await supabase.auth.resetP
 function deleteAccountFlow(){
  document.getElementById('delModal')?.remove();const opener=document.activeElement;
  const m=document.createElement('div');m.className='modal-bg';m.id='delModal';
- m.innerHTML=`<div class="modal tone-error" role="alertdialog" aria-modal="true" aria-labelledby="delT" aria-describedby="delB" style="text-align:left"><div class="mail-ico ico-error" aria-hidden="true">!</div><h2 id="delT" style="text-align:center">Delete your account?</h2>
+ m.innerHTML=`<div class="modal tone-error u-tal" role="alertdialog" aria-modal="true" aria-labelledby="delT" aria-describedby="delB"><div class="mail-ico ico-error" aria-hidden="true">!</div><h2 id="delT" class="u-tac">Delete your account?</h2>
  <div id="delB"><p class="muted">This permanently erases everything tied to <b>${esc(user.email)}</b>:</p><ul class="del-list"><li>Your plan, meals, workouts and weight history</li><li>Progress photos and coach insights</li><li>Your login. You will be signed out for good</li></ul><p class="muted"><b>This cannot be undone.</b></p></div>
- <button class="btn" id="delExport" type="button" style="width:100%">Download my data first</button>
- <div class="field" style="margin-top:14px"><label for="delConfirm">Type <b>DELETE</b> to confirm</label><input id="delConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="DELETE"/></div>
+ <button class="btn u-w100" id="delExport" type="button">Download my data first</button>
+ <div class="field u-mt14"><label for="delConfirm">Type <b>DELETE</b> to confirm</label><input id="delConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="DELETE"/></div>
  <p class="muted small" id="delMsg" role="status"></p>
  <div class="modal-actions"><button class="btn danger" id="delGo" type="button" disabled>Delete my account forever</button><button class="btn ghost" id="delCancel" type="button">Cancel</button></div></div>`;
  document.body.appendChild(m);

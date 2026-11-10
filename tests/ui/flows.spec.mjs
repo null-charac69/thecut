@@ -142,3 +142,37 @@ test('meals: Add a meal can be cancelled with Escape and keeps input when saving
   await expect(page.getByRole('alert')).toBeVisible();
   await expect(page.getByLabel('Meal name')).toHaveValue('Late snack');
 });
+
+test('CSP: no violations across menus, modals, coach and account (style-src has no unsafe-inline)', async ({ page }) => {
+  const app = await openApp(page);
+  await page.locator('#bell').click();
+  await page.keyboard.press('Escape');
+  await page.locator('#acctBtn').click();
+  await page.keyboard.press('Escape');
+  await go(page, 'meals');
+  await page.locator('#addMealTemplate').click();
+  await page.keyboard.press('Escape');
+  await go(page, 'coach');
+  await page.locator('#acctBtn').click();
+  await page.locator('#acctMenu [data-am="account"]').click();
+  await page.locator('#acctDelete').click();
+  await page.locator('#delCancel').click();
+  expect(await app.csp()).toEqual([]);
+  expect(app.errors).toEqual([]);
+});
+
+test('CSP: no violations in the workout runner', async ({ page }) => {
+  const app = await openApp(page);
+  await go(page, 'workout');
+  await page.getByRole('button', { name: 'Start workout' }).click();
+  await page.locator('#wkClock, #wkTitle').first().waitFor();
+  await page.waitForTimeout(300);
+  expect(await app.csp()).toEqual([]);
+  expect(app.errors).toEqual([]);
+});
+
+test('CSP guard actually reports an inline style (so the clean runs above mean something)', async ({ page }) => {
+  const app = await openApp(page);
+  await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<i style="color:red">x</i>'));
+  await expect.poll(() => app.csp()).not.toEqual([]);
+});

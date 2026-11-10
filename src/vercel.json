@@ -29,7 +29,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://ukyobppectpjkcudgewy.supabase.co; font-src 'self' data:; connect-src 'self' https://ukyobppectpjkcudgewy.supabase.co wss://ukyobppectpjkcudgewy.supabase.co https://esm.sh; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' https://esm.sh; style-src 'self'; img-src 'self' data: blob: https://ukyobppectpjkcudgewy.supabase.co; font-src 'self' data:; connect-src 'self' https://ukyobppectpjkcudgewy.supabase.co wss://ukyobppectpjkcudgewy.supabase.co https://esm.sh; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     },
