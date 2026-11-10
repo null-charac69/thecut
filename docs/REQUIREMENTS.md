@@ -550,7 +550,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | OI-15 | Try Install app on a physical Android phone | Manual test | P2 |
 | OI-16 | ~~Split `app.js`~~ Done in v1.5: 13 modules plus a shared `S` state object (`src/state.js`), formatted with Prettier | Closed | P2 |
 | OI-17 | ~~Remove inline `style=`~~ Done in v1.5: zero inline styles, CSP `style-src 'self'`, guarded by a unit test and a runtime CSP test | Closed | P2 |
-| OI-19 | Apply migration `20261111_plan_undo_complete.sql` to production (Undo/Restore of older plans and full grocery/prep rollback, KL-11). Tested on an in-process Postgres (`npm run test:db`); not yet applied | Owner approval | P1 |
+| OI-19 | Apply migration `20261111_plan_undo_complete.sql` to production (Undo/Restore of older plans and full grocery/prep rollback, KL-11). Tested on an in-process Postgres (`npm run test:db`). **Closed 2026-11-10:** applied to production as `plan_undo_complete`; columns, indexes, FKs and grants verified; security advisors show only the intentional SECURITY DEFINER warnings | Owner approval | Closed |
 | OI-18 | Verify `workout_review` against the real LLM and the feedback popup, Undo and Refine-box persistence in a signed-in browser (shipped with DB, RLS and unit-level checks only; the build sandbox cannot reach Supabase) | Manual test | P1 |
 
 ## 11. Skipped items (paid plan or manual action)
@@ -583,7 +583,7 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | KL-02 | The tab lock (`aiUnlocked`) is a client-side convenience; data protection relies on RLS. |
 | KL-05 | The in-progress workout draft lives in browser storage, so it does not follow the user to another device. |
 | KL-07 | The CSP blocks self-framing, so the app cannot be embedded for mobile-width testing. |
-| KL-11 | Until `20261111_plan_undo_complete.sql` is applied (OI-19), Undo of a plan older than the last one fails and grocery/prep items the newer plan added are not removed. |
+| KL-11 | Resolved 2026-11-10: the plan-undo migration is applied, so Undo of any older plan works and plan-derived groceries/prep tasks are rolled back with it. |
 | KL-12 | Auto-applied plans skip the old review step; safety concerns now surface through the Coach (and the AI's own summary on the What-changed card). |
 | KL-13 | Workout reviews change the recurring weekly training week of the active plan, not a dated calendar; Undo is offered only while that week is unchanged since the review. |
 | KL-08 | Nutrition and training output are AI estimates, not medical advice. |
@@ -600,4 +600,4 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | 1.2 | 2026-11-10 | Mobile layout and top bar; input-only Plan page with auto-apply/undo (PLAN-11, 12, 13, 16 revised; PLAN-20 to 23 added); bell dropdown (COACH-05); UX-16/17; CI workflow removed (QA-04 Skipped); KL-11/12 |
 | 1.3 | 2026-11-10 | Dynamic workouts: WORK-17 to 20 and US-12; PLAN-24 (Refine box persistence); `workout_review` action (AISVC-01); tables 24 → 26 and policies 33 → 40 (SEC-01, 7.1); export covers 24 tables; edge function v53; QA counts (36 unit, 67 API); OI-18, KL-13 |
 | 1.4 | 2026-11-10 | Product name changed from "THE CUT 2.0" to "THE CUT" (first release): app title, manifest, export `product`, README, LICENSE, docs, SQL comments |
-| 1.5 | 2026-11-11 | Dead code for features not in the UI deleted (RM-07); `app.js` split into modules with shared state; monkey patches replaced; Add-a-meal modal form; inline styles and `unsafe-inline` removed; CSS pruned; Lucide icons, sentence-case labels, data-driven sidebar summary; Coach chat visibility bug fixed; SECURITY DEFINER audit (SEC-07); mocked-backend UI tests and in-process Postgres tests; migration for complete plan undo written (OI-19) |
+| 1.5 | 2026-11-11 | Dead code for features not in the UI deleted (RM-07); `app.js` split into modules with shared state; monkey patches replaced; Add-a-meal modal form; inline styles and `unsafe-inline` removed; CSS pruned; Lucide icons, sentence-case labels, data-driven sidebar summary; Coach chat visibility bug fixed; SECURITY DEFINER audit (SEC-07); mocked-backend UI tests and in-process Postgres tests; migration for complete plan undo written and applied to production (OI-19) |
