@@ -168,14 +168,14 @@ async function review(supabase: any) {
 // deno-lint-ignore no-explicit-any
 async function runPlan(userPrompt: string, ctx?: { profile?: any; refKcal?: number | null }) {
   const soft = (r: { plan: Record<string, unknown> | null }) => (ctx ? qualityChecks(r.plan, ctx.profile, ctx.refKcal) : []);
-  let attempt = await chatJson({ system: SYSTEM, user: userPrompt, maxTokens: 4500, temperature: 0.3 });
+  let attempt = await chatJson({ system: SYSTEM, user: userPrompt, maxTokens: 6200, temperature: 0.3 });
   let result = normalizePlan(attempt.json);
   let issues = result.plan ? soft(result) : result.problems;
   if (issues.length) {
     const retry = await chatJson({
       system: SYSTEM,
       user: userPrompt + `\nYour previous answer was rejected: ${issues.join(" ")} Return a corrected JSON object.`,
-      maxTokens: 4500,
+      maxTokens: 6200,
       temperature: 0.2,
     });
     const r2 = normalizePlan(retry.json);

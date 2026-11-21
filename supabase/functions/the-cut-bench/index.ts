@@ -72,11 +72,11 @@ Deno.serve(async (req: Request) => {
     return { ms: 0, error: "no response" };
   };
   const base = { model, task: body.task, run: body.run ?? 0, where: { fn_region: where.fn_region, bedrock_region: region } };
-  if (body.task === "coach") {
-    const r = await runCoach(converse);
+  if (body.task === "coach" || body.task === "coach2") {
+    const r = await runCoach(converse, T.user);
     if (r.error) return json({ ...base, ms: r.ms, calls: r.calls, ok: false, score: 0, notes: [r.error] });
     const g = r.json ? T.grade(r.json) : { ok: false, score: 0, notes: ["not valid JSON"] };
-    return json({ ...base, ms: r.ms, calls: r.calls, out_tokens: outTokens, ...g, head: String(r.json?.final ?? "").slice(0, 200) });
+    return json({ ...base, ms: r.ms, calls: r.calls, out_tokens: outTokens, ...g, head: String(r.json?.final ?? "").slice(0, 900) });
   }
   const r = await converse(T.user);
   if (r.error) return json({ ...base, ms: r.ms, calls: 1, ok: false, score: 0, notes: [r.error] });
