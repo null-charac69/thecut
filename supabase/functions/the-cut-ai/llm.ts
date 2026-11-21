@@ -42,6 +42,11 @@ function configs(fast: boolean): Cfg[] {
     }
   };
   add("LLM_", "primary");
+  // A fast job that the fast model fails (busy, bad JSON) is retried once on the main model before the fallback provider.
+  if (fast && out[0] && Deno.env.get("LLM_MODEL_FAST")) {
+    const main = Deno.env.get("LLM_MODEL")?.trim();
+    if (main && main !== out[0].model) out.push({ ...out[0], model: main, label: "primary-main" });
+  }
   add("LLM_FALLBACK_", "fallback");
   return out;
 }
@@ -120,6 +125,7 @@ export async function chatJson(opts: ChatJsonOptions): Promise<ChatJsonResult> {
           ...(c.baseUrl.includes("openrouter.ai") ? { reasoning: { effort: "low", exclude: true } } : {}),
         });
         const url = `${c.baseUrl}/chat/completions`;
+        const t0 = Date.now();
         const signal = AbortSignal.timeout(100_000);
         const res = c.aws
           ? await c.aws.fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, signal })
@@ -152,6 +158,8 @@ export async function chatJson(opts: ChatJsonOptions): Promise<ChatJsonResult> {
           break;
         }
         const data = await res.json();
+        // One line per model call, so latency per job and model can be read from the function logs.
+        console.log(JSON.stringify({ llm: c.label, model: c.model, fast: !!opts.fast, ms: Date.now() - t0, out_tokens: data?.usage?.completion_tokens ?? null }));
         const text = data?.choices?.[0]?.message?.content;
         if (typeof text !== "string" || !text.trim()) {
           last = new LlmError("The AI returned an empty response.", 502);

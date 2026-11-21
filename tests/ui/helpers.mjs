@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { makeDb, NOW, aiPlanResponse, planHash } from './fixtures.mjs';
 
 const FAKE = readFileSync(new URL('./fake-supabase.js', import.meta.url), 'utf8');
-export const AI_URL = '**/functions/v1/the-cut-ai';
+export const AI_URL = '**/functions/v1/the-cut-ai*';
 
 /**
  * Open the app with a fake backend.

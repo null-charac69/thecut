@@ -24,6 +24,7 @@
     "@playwright/test": "^1.49.0",
     "@supabase/supabase-js": "^2.81.1",
     "@types/node": "^22.0.0",
+    "aws4fetch": "^1.0.20",
     "eslint": "^9.0.0",
     "globals": "^15.0.0",
     "lucide-static": "^1.71.0",

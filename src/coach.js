@@ -1,4 +1,5 @@
 import { esc } from './lib/format.js';
+import { aiUrl } from './lib/ai.js';
 import { S } from './state.js';
 import { $, SUPABASE_KEY, SUPABASE_URL, q, supabase } from './client.js';
 import { getAIBasePlan, runAIPlanRequest } from './plan.js';
@@ -172,7 +173,7 @@ async function edgeCall(payload) {
     data: { session: s },
   } = await supabase.auth.getSession();
   if (!s?.access_token) throw new Error('Session expired. Sign in again.');
-  const r = await fetch(SUPABASE_URL + '/functions/v1/the-cut-ai', {
+  const r = await fetch(aiUrl(SUPABASE_URL), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.access_token, apikey: SUPABASE_KEY },
     body: JSON.stringify(payload),

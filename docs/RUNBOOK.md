@@ -44,3 +44,10 @@ Set these Supabase Edge Function secrets: `LLM_BASE_URL=https://bedrock-runtime.
 ## Production checklist status
 - Paid/Enterprise-only items intentionally skipped: SAML SSO, SCIM, Audit Logs, cookie policy, Observability Plus, Function/Secure Compute failover, load testing, Spend Management thresholds.
 - Manual dashboard items: Firewall (rate limit + bot filter + OWASP managed rules), Speed Insights, Supabase leaked-password protection, Deployment Protection for previews.
+
+## Latency: region and model choice
+- The client calls `the-cut-ai` with `?forceFunctionRegion=ap-south-1` (`src/lib/ai.js`), so the function runs in Mumbai. Keep Bedrock in the same region: `LLM_BASE_URL=https://bedrock-runtime.ap-south-1.amazonaws.com/openai/v1`, `LLM_AWS_REGION=ap-south-1`.
+- Pick models with the benchmark (uses the production prompts and validators, prints a recommendation):
+  `AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... MODELS=<id>,<id> RUNS=3 node --experimental-strip-types scripts/bench-llm.mjs`
+- Set `LLM_MODEL` (heavy: plan generate/refine, reviews) and `LLM_MODEL_FAST` (coach chat, lists, edit checks) to the picks, then redeploy `the-cut-ai` (all files: index.ts, llm.ts, plan.ts, workout.ts, lists.ts, prompts.ts).
+- Each model call logs `{"llm","model","fast","ms","out_tokens"}` in the function logs; use them to confirm the latency in production.
