@@ -21,10 +21,10 @@ A personal nutrition, training and transformation tracker with an AI planner and
 |---|---|
 | Frontend | Static app, no build step: `src/index.html` + `src/app.js` (entry) + feature modules + `src/styles.css` + `src/lib/*.js` (ES modules), Vercel (project `the-cut-tracker`, Root Directory `src`) |
 | Backend | Supabase: Postgres + RLS, Auth, Realtime, Edge Functions, pg_cron (project `the-cut-cloud`) |
-| AI | Edge Function `the-cut-ai` (Deno), provider-agnostic OpenAI-compatible adapter. Current: DeepSeek V3.2 on AWS Bedrock via SigV4 (model id is a Supabase secret) |
+| AI | Edge Function `the-cut-ai` (Deno), provider-agnostic OpenAI-compatible adapter. Current: AWS Bedrock in Mumbai via SigV4 and the Converse API; MiniMax M2.5 for plans and reviews, gpt-oss-120b for coach, lists and edit checks (model ids are Supabase secrets; see docs/RUNBOOK.md) |
 
 ## AI configuration (Supabase secrets)
-`LLM_BASE_URL`, `LLM_MODEL`, `LLM_MODEL_FAST`, `LLM_AWS_ACCESS_KEY_ID`, `LLM_AWS_SECRET_ACCESS_KEY`, `LLM_AWS_REGION`. Swapping the model is a secrets change; see [docs/RUNBOOK.md](docs/RUNBOOK.md).
+`LLM_MODEL`, `LLM_MODEL_FAST`, `LLM_AWS_ACCESS_KEY_ID`, `LLM_AWS_SECRET_ACCESS_KEY`, `LLM_AWS_REGION`. Swapping the model is a secrets change; see [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Docs
 - [Architecture](docs/ARCHITECTURE.md)

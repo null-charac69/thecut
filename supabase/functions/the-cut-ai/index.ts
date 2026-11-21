@@ -140,7 +140,7 @@ async function review(supabase: any) {
     const r = await chatJson({
       system: REVIEW_SYSTEM,
       user: `<user_data>\n${JSON.stringify({ week: summary, live_plan: live, unacknowledged_user_edits: pending }).slice(0, 7000)}\n</user_data>\nWrite the weekly review.`,
-      fast: false, // the 20b model emits malformed JSON too often; review is infrequent so use the main model
+      fast: false, // weekly review is infrequent and judgement-heavy: use the main model
       maxTokens: 700,
       temperature: 0.3,
     });
@@ -369,7 +369,7 @@ async function chat(sb: Sb, userId: string, rawMessages: any) {
   let draftFacts = ""; // real numbers of the saved draft, appended to the reply so the prose can never contradict it
   let kept = false;
 
-  const MAX_STEPS = 8;
+  const MAX_STEPS = 5; // plan and profile are preloaded, so most answers take one call; the last two steps force an answer
   const called = new Set<string>(["get_live_plan{}", "get_profile{}"]); // both are preloaded above
   for (let step = 0; step < MAX_STEPS; step++) {
     // Some models spend their whole budget on read tools. Force an answer on the last two steps.

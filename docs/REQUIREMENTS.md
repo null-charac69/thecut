@@ -4,7 +4,7 @@
 |---|---|
 | **Product** | THE CUT — personal nutrition, training and transformation tracker with an AI planner and a live coach |
 | **Document** | `docs/REQUIREMENTS.md` |
-| **Version** | 1.9 |
+| **Version** | 1.10 |
 | **Date** | 2026-11-10 |
 | **Baseline** | `main` @ `b5c1e86` (dynamic workouts: per-exercise feedback and AI session review; previous baselines `f8db945`, `81677d8`); production: https://the-cut-tracker.vercel.app |
 | **Owner** | Anant Kumar Thakur |
@@ -168,10 +168,12 @@ Evidence abbreviations: **FE** = `src/index.html`; **EF** = edge function; **DB*
 | AISVC-06 | Only aggregated data is sent to the LLM provider | P0 | Done | `docs/ARCHITECTURE.md`; EF summary builders |
 | AISVC-07 | The caller's own data is read through their JWT, so database RLS applies to every AI read | P0 | Done | EF `createClient` with user's Authorization header |
 | AISVC-08 | AI request failures surface as a readable error toast or dialog | P1 | Done | FE `callAIPlanner`, `fail` |
-| AISVC-10 | The AI edge function is invoked pinned to Mumbai (`ap-south-1`) via `forceFunctionRegion`, and the Bedrock endpoint it calls is in `ap-south-1` | P1 | Partial | FE `src/lib/ai.js` `aiUrl` (+ unit test); Bedrock region is the `LLM_BASE_URL`/`LLM_AWS_REGION` secrets (OI-21) |
+| AISVC-10 | The AI edge function runs in Mumbai (`ap-south-1`, same region as the database; pinned with `forceFunctionRegion`) and calls Bedrock in `ap-south-1` | P1 | Partial | FE `src/lib/ai.js` `aiUrl` (+ unit test); function region verified `ap-south-1`; Bedrock region is the `LLM_AWS_REGION` secret, still `us-west-2` until the owner sets it (OI-21) |
 | AISVC-11 | Split models by job: `LLM_MODEL` for plan generate/refine, weekly review and workout review; `LLM_MODEL_FAST` for coach chat, list builds and edit checks. A fast job the fast model fails is retried once on the main model before the fallback provider. Without `LLM_MODEL_FAST` everything uses `LLM_MODEL` | P1 | Done | EF `llm.ts` `configs`, `chatJson({fast})` |
 | AISVC-12 | Every model call logs one JSON line (provider, model, fast, ms, output tokens) for latency tracking | P2 | Done | EF `llm.ts` |
-| AISVC-13 | Model benchmark: `scripts/bench-llm.mjs` runs the production plan, list and coach prompts through the production validators against a list of Bedrock models (default `ap-south-1`) and recommends the heavy and light models (heavy: best plan quality with median ≤ 25 s; light: fastest with 100% valid list and coach answers) | P1 | Done | `scripts/bench-llm.mjs`; `tests/unit/bench.test.mjs` |
+| AISVC-13 | Model benchmark: production prompts and validators, run inside Supabase Mumbai against Bedrock Mumbai (`the-cut-bench`, temporary) or locally (`scripts/bench-llm.mjs`); coach is timed over the full tool loop. Pick rule: heavy = best plan quality with median ≤ 25 s; light = fastest with 100% valid list and coach answers, then a manual accuracy review of the coach answers | P1 | Done | `supabase/functions/the-cut-ai/bench.ts`, `supabase/functions/the-cut-bench/`, `scripts/bench-llm.mjs`; `tests/unit/bench.test.mjs` |
+| AISVC-14 | Bedrock is called through the Converse API (every Bedrock text model), with a resend without `temperature` for models that reject it | P1 | Done | EF `llm.ts`; verified on production secrets via the bench `adapter` mode |
+| AISVC-15 | Coach prompt is answer-first: plan and profile are given up front, tools only when data is missing, `propose_plan_update` only when the user asks for a plan change; at most 5 steps | P1 | Done | EF `prompts.ts` `CHAT_SYSTEM`, `chat` `MAX_STEPS` |
 | AISVC-09 | The `lists` action builds the week's grocery list and daily prep from the user's live meals. It validates the request (Sunday week start, today inside that week), skips the model when the live meals are unchanged since the last build (`{status:"current"}`), makes at most two model calls, and writes only through the `replace_generated_lists` RPC. Prompt version `the-cut-lists-v1` | P0 | Done | EF `lists()`, `lists.ts` (`normalizeLists`, `checkWindow`); DB `replace_generated_lists`; unit + DB tests |
 
 ### 4.4 Coach (COACH)
@@ -570,7 +572,7 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | OI-16 | ~~Split `app.js`~~ Done in v1.5: 13 modules plus a shared `S` state object (`src/state.js`), formatted with Prettier | Closed | P2 |
 | OI-17 | ~~Remove inline `style=`~~ Done in v1.5: zero inline styles, CSP `style-src 'self'`, guarded by a unit test and a runtime CSP test | Closed | P2 |
 | OI-19 | Apply migration `20261111_plan_undo_complete.sql` to production (Undo/Restore of older plans and full grocery/prep rollback, KL-11). Tested on an in-process Postgres (`npm run test:db`). **Closed 2026-11-10:** applied to production as `plan_undo_complete`; columns, indexes, FKs and grants verified; security advisors show only the intentional SECURITY DEFINER warnings | Owner approval | Closed |
-| OI-21 | Run `scripts/bench-llm.mjs` against the Bedrock models in `ap-south-1`, set `LLM_BASE_URL`/`LLM_AWS_REGION` to Mumbai and `LLM_MODEL`/`LLM_MODEL_FAST` to the picks, deploy edge function `the-cut-ai`. Blocked in the build session: the Supabase and AWS connectors were not available and the sandbox cannot reach Bedrock | Owner: reconnect Supabase + AWS connectors | P0 |
+| OI-21 | Set Edge Function secrets `LLM_AWS_REGION=ap-south-1`, `LLM_MODEL=minimax.minimax-m2.5`, `LLM_MODEL_FAST=openai.gpt-oss-120b-1:0` (the secret tool needs the owner to type values in the dashboard), then re-run the bench `adapter` check and stub `the-cut-bench` (owner deletes it) | Owner: Supabase dashboard → Edge Functions → Secrets | P0 |
 | OI-20 | Verify the `lists` action against the real LLM in a signed-in browser: open Prep, switch a plan to vegetarian and confirm no meat remains, press Regenerate (shipped with unit, DB and mocked-UI tests only; the build sandbox cannot reach the LLM) | Manual test | P1 |
 | OI-18 | Verify `workout_review` against the real LLM and the feedback popup, Undo and Refine-box persistence in a signed-in browser (shipped with DB, RLS and unit-level checks only; the build sandbox cannot reach Supabase) | Manual test | P1 |
 
@@ -610,6 +612,7 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | KL-14 | Between the migration and the front-end deploy on 2026-11-10 the old client (Monday weeks) briefly coexisted with Sunday-keyed rows; existing unticked lists were cleared once and rebuilt. Ticked rows from before that were kept. |
 | KL-16 | The "plan changed, rebuild needed" flag lives in memory. If the page is reloaded or closed before a background build finishes, nothing rebuilds on its own; the Prep tab then shows the old list with Regenerate (or Generate if empty). |
 | KL-15 | The grocery list is rebuilt only when the live meals change or the user presses Regenerate; changes to profile fields that do not alter the meals (for example budget) do not trigger a rebuild. |
+| KL-17 | Model choice is benchmarked on one vegetarian fat-loss profile and one coach question; plan quality is checked by the production validators, coach accuracy by manual review. Claude, GPT-5.6, Grok and GLM-5 models are not enabled on this AWS account. |
 | KL-08 | Nutrition and training output are AI estimates, not medical advice. |
 | KL-09 | The coach rules for water and check-ins only fire on existing data, because there is no logging screen for them. |
 
@@ -629,3 +632,4 @@ Principle (owner decision, 2026-11-10): **nothing in the app is hard-coded; cont
 | 1.7 | 2026-11-10 | "Delete plan & start fresh" (PLAN-25, `reset_plan` RPC, migration `20261113_reset_plan` applied to production); functions 19; db 19 tests, ui 28 |
 | 1.8 | 2026-11-10 | Lists are generated with the plan (background, with a ready toast) instead of on opening Prep; Prep shows a Generate button when empty; Meal-prep count refresh fix (PREP-06, 07, 12; KL-16); ui tests 29 |
 | 1.9 | 2026-11-21 | Latency work: AI function pinned to Mumbai (AISVC-10), split heavy/light models with fallback (AISVC-11), per-call latency logs (AISVC-12), coach chat preloads plan and profile so most replies take one model call, Bedrock model benchmark script (AISVC-13); prompts moved to `prompts.ts`; OI-21 |
+| 1.10 | 2026-11-21 | Bedrock Mumbai benchmark (16 models tried, 9 usable): heavy MiniMax M2.5 (plans 16.9 s, 3/3 valid), light gpt-oss-120b (coach ~2 s, lists ~5 s); DeepSeek V3.2 failed 2/2 plans and took 8–9 s per coach reply from Oregon. Converse API, answer-first coach prompt, edge function v55 (AISVC-13 to 15); OI-21 updated; KL-17 |

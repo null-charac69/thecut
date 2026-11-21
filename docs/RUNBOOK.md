@@ -47,7 +47,8 @@ Set these Supabase Edge Function secrets: `LLM_BASE_URL=https://bedrock-runtime.
 
 ## Latency: region and model choice
 - The client calls `the-cut-ai` with `?forceFunctionRegion=ap-south-1` (`src/lib/ai.js`), so the function runs in Mumbai. Keep Bedrock in the same region: `LLM_BASE_URL=https://bedrock-runtime.ap-south-1.amazonaws.com/openai/v1`, `LLM_AWS_REGION=ap-south-1`.
-- Pick models with the benchmark (uses the production prompts and validators, prints a recommendation):
+- Pick models with the benchmark (production prompts and validators). Server-side, next to Bedrock: deploy `supabase/functions/the-cut-bench` (copy `the-cut-ai/{bench,plan,lists,prompts,llm}.ts` next to it, `verify_jwt` off, key-hash protected) and call it from SQL with `net.http_post(... body {model, task: plan|lists|coach, run})`; `{mode:"list"}` lists the Mumbai models, `{mode:"adapter"}` runs the production adapter with the live secrets. Run waves of ≤10 requests (more hit WORKER_RESOURCE_LIMIT). Locally:
   `AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... MODELS=<id>,<id> RUNS=3 node --experimental-strip-types scripts/bench-llm.mjs`
 - Set `LLM_MODEL` (heavy: plan generate/refine, reviews) and `LLM_MODEL_FAST` (coach chat, lists, edit checks) to the picks, then redeploy `the-cut-ai` (all files: index.ts, llm.ts, plan.ts, workout.ts, lists.ts, prompts.ts).
 - Each model call logs `{"llm","model","fast","ms","out_tokens"}` in the function logs; use them to confirm the latency in production.
+- Result 2026-11-21 (Mumbai, 3 runs): plans MiniMax M2.5 16.9 s 3/3 valid, gpt-oss-120b 12.7–13.3 s 2/3 (one bad JSON), DeepSeek V3.2 17.8–26 s 0/2; coach (one reply) gpt-oss-120b 1.5–5.5 s, Qwen3-Next 0.8–1.2 s, GLM-4.7 Flash ~0.5 s but vaguer numbers; lists all valid, 1.7–13 s. Not enabled on this account: Claude, GPT-5.6, Grok, GLM-5.3. Nemotron Super timed out; Kimi K3.1 truncated plans at 6,500 tokens.

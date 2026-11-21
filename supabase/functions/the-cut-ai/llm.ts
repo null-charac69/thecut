@@ -2,8 +2,9 @@
 // Speaks the OpenAI-compatible Chat Completions API, so Groq, Cerebras, OpenRouter,
 // Gemini (OpenAI endpoint), Mistral or a self-hosted vLLM all work by changing secrets only.
 //
-// AWS Bedrock without an API key (SigV4): set LLM_BASE_URL=https://bedrock-runtime.<region>.amazonaws.com/openai/v1,
-//   LLM_AWS_ACCESS_KEY_ID, LLM_AWS_SECRET_ACCESS_KEY, LLM_AWS_REGION (LLM_API_KEY is then unused).
+// AWS Bedrock without an API key (SigV4): set LLM_AWS_ACCESS_KEY_ID, LLM_AWS_SECRET_ACCESS_KEY, LLM_AWS_REGION
+//   (default ap-south-1, Mumbai) and LLM_MODEL / LLM_MODEL_FAST to Bedrock model ids. Bedrock is called through the
+//   Converse API, which every Bedrock text model supports; LLM_BASE_URL and LLM_API_KEY are then unused.
 // Secrets (Supabase -> Edge Functions -> Secrets):
 //   LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, LLM_MODEL_FAST (optional)
 //   LLM_FALLBACK_BASE_URL, LLM_FALLBACK_API_KEY, LLM_FALLBACK_MODEL, LLM_FALLBACK_MODEL_FAST (optional)
@@ -18,7 +19,7 @@ export class LlmError extends Error {
   }
 }
 
-type Cfg = { baseUrl: string; apiKey: string; model: string; label: string; aws?: AwsClient };
+type Cfg = { baseUrl: string; apiKey: string; model: string; label: string; aws?: AwsClient; region?: string };
 
 function configs(fast: boolean): Cfg[] {
   const out: Cfg[] = [];
@@ -28,13 +29,14 @@ function configs(fast: boolean): Cfg[] {
     const model = (fast ? Deno.env.get(`${prefix}MODEL_FAST`) : undefined) ?? Deno.env.get(`${prefix}MODEL`);
     const akid = Deno.env.get(`${prefix}AWS_ACCESS_KEY_ID`)?.trim();
     const sak = Deno.env.get(`${prefix}AWS_SECRET_ACCESS_KEY`)?.trim();
-    const region = Deno.env.get(`${prefix}AWS_REGION`)?.trim();
-    if (baseUrl && model && akid && sak && region) {
+    const region = Deno.env.get(`${prefix}AWS_REGION`)?.trim() || "ap-south-1";
+    if (model && akid && sak) {
       out.push({
-        baseUrl: baseUrl.trim().replace(/\/+$/, ""),
+        baseUrl: `https://bedrock-runtime.${region}.amazonaws.com`,
         apiKey: "",
         model: model.trim(),
         label,
+        region,
         aws: new AwsClient({ accessKeyId: akid, secretAccessKey: sak, region, service: "bedrock" }),
       });
     } else if (baseUrl && apiKey && model) {
@@ -108,23 +110,31 @@ export async function chatJson(opts: ChatJsonOptions): Promise<ChatJsonResult> {
 
   let last: LlmError | null = null;
   for (const c of providers) {
+    let noTemp = false;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const payload = JSON.stringify({
-          model: c.model,
-          messages: [
-            { role: "system", content: opts.system },
-            { role: "user", content: opts.user },
-          ],
-          temperature: opts.temperature ?? 0.3,
-          // Reasoning models count hidden thinking against max_tokens, so give Bedrock extra headroom.
-          max_tokens: Math.max(opts.maxTokens ?? 4000, c.aws ? 8000 : 0),
-          // Bedrock's OpenAI layer may not accept response_format; the prompt + parseLooseJson cover it.
-          ...(c.aws ? { reasoning_effort: "low" } : { response_format: { type: "json_object" } }),
-          // OpenRouter reasoning models can burn the whole token budget on hidden thinking; keep it minimal.
-          ...(c.baseUrl.includes("openrouter.ai") ? { reasoning: { effort: "low", exclude: true } } : {}),
-        });
-        const url = `${c.baseUrl}/chat/completions`;
+        const maxTokens = opts.maxTokens ?? 4000;
+        // Bedrock: Converse API (works for every Bedrock text model). Reasoning models count thinking against the
+        // output budget, so they get 2,000 tokens of headroom (capped at the common 8,192 output limit).
+        const payload = c.aws
+          ? JSON.stringify({
+            system: [{ text: opts.system }],
+            messages: [{ role: "user", content: [{ text: opts.user }] }],
+            inferenceConfig: { maxTokens: Math.min(8192, maxTokens + 2000), ...(noTemp ? {} : { temperature: opts.temperature ?? 0.3 }) },
+          })
+          : JSON.stringify({
+            model: c.model,
+            messages: [
+              { role: "system", content: opts.system },
+              { role: "user", content: opts.user },
+            ],
+            temperature: opts.temperature ?? 0.3,
+            max_tokens: maxTokens,
+            response_format: { type: "json_object" },
+            // OpenRouter reasoning models can burn the whole token budget on hidden thinking; keep it minimal.
+            ...(c.baseUrl.includes("openrouter.ai") ? { reasoning: { effort: "low", exclude: true } } : {}),
+          });
+        const url = c.aws ? `${c.baseUrl}/model/${encodeURIComponent(c.model)}/converse` : `${c.baseUrl}/chat/completions`;
         const t0 = Date.now();
         const signal = AbortSignal.timeout(100_000);
         const res = c.aws
@@ -139,7 +149,7 @@ export async function chatJson(opts: ChatJsonOptions): Promise<ChatJsonResult> {
         if (res.status === 429 || res.status >= 500) {
           const retryAfter = Number(res.headers.get("retry-after") ?? "0") * 1000;
           let why = "";
-          try { why = String(JSON.parse((await res.text()).slice(0, 600))?.error?.message ?? "").replace(/gsk_[A-Za-z0-9]+/g, "[key]").slice(0, 200); } catch { /* not JSON */ }
+          try { why = String(((j: any) => j?.error?.message ?? j?.message ?? "")(JSON.parse((await res.text()).slice(0, 600)))).replace(/gsk_[A-Za-z0-9]+/g, "[key]").slice(0, 200); } catch { /* not JSON */ }
           last = new LlmError(`The AI service is busy (${res.status}${why ? ": " + why : ""}). Try again in a minute.`, 503);
           console.error(`LLM ${c.label} ${res.status} ${why}`);
           if (attempt === 0 && res.status === 429 && retryAfter > 0 && retryAfter <= 15_000) {
@@ -150,17 +160,26 @@ export async function chatJson(opts: ChatJsonOptions): Promise<ChatJsonResult> {
         }
         if (!res.ok) {
           const body = (await res.text()).slice(0, 300);
+          // Some Bedrock models (e.g. Kimi) reject the temperature field: resend once without it.
+          if (res.status === 400 && /temperature/i.test(body) && !noTemp) {
+            noTemp = true;
+            attempt--;
+            continue;
+          }
           console.error(`LLM ${c.label} ${res.status}: ${body}`);
           // Provider error text is sanitised (no keys, bounded) so a misconfiguration is diagnosable.
           let detail = "";
-          try { detail = String(JSON.parse(body)?.error?.message ?? "").replace(/gsk_[A-Za-z0-9]+|sk-[A-Za-z0-9_-]+/g, "[key]").slice(0, 160); } catch { /* not JSON */ }
+          try { detail = String(((j: any) => j?.error?.message ?? j?.message ?? "")(JSON.parse(body))).replace(/gsk_[A-Za-z0-9]+|sk-[A-Za-z0-9_-]+/g, "[key]").slice(0, 160); } catch { /* not JSON */ }
           last = new LlmError(`The AI service rejected the request (${res.status}${detail ? ": " + detail : ""}).`, 502);
           break;
         }
         const data = await res.json();
         // One line per model call, so latency per job and model can be read from the function logs.
-        console.log(JSON.stringify({ llm: c.label, model: c.model, fast: !!opts.fast, ms: Date.now() - t0, out_tokens: data?.usage?.completion_tokens ?? null }));
-        const text = data?.choices?.[0]?.message?.content;
+        console.log(JSON.stringify({ llm: c.label, model: c.model, fast: !!opts.fast, ms: Date.now() - t0, out_tokens: data?.usage?.completion_tokens ?? data?.usage?.outputTokens ?? null }));
+        const text = c.aws
+          // deno-lint-ignore no-explicit-any
+          ? (data?.output?.message?.content ?? []).filter((b: any) => typeof b?.text === "string").map((b: any) => b.text).join("")
+          : data?.choices?.[0]?.message?.content;
         if (typeof text !== "string" || !text.trim()) {
           last = new LlmError("The AI returned an empty response.", 502);
           break;
@@ -168,7 +187,7 @@ export async function chatJson(opts: ChatJsonOptions): Promise<ChatJsonResult> {
         try {
           return { json: parseLooseJson(text), model: c.model, provider: c.label };
         } catch (pe) {
-          console.error(`LLM ${c.label} bad JSON finish=${data?.choices?.[0]?.finish_reason} len=${text.length} head=${text.slice(0, 120)} tail=${text.slice(-120)}`);
+          console.error(`LLM ${c.label} bad JSON finish=${data?.choices?.[0]?.finish_reason ?? data?.stopReason} len=${text.length} head=${text.slice(0, 120)} tail=${text.slice(-120)}`);
           last = pe instanceof LlmError ? pe : new LlmError("The AI returned a response that was not valid JSON.", 502);
           if (attempt === 0) continue; // one retry: small models occasionally emit malformed JSON
           break;
