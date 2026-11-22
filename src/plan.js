@@ -1,6 +1,15 @@
 import { esc, fmt, today, weekStart } from './lib/format.js';
 import { diffPlans } from './lib/plandiff.js';
 import { aiUrl } from './lib/ai.js';
+import {
+  applyToProfile,
+  changeInstruction,
+  cleanChanges,
+  currentFacts,
+  describeChanges,
+  FOCUS,
+  verifyPlan,
+} from './lib/planchanges.js';
 import { S } from './state.js';
 import { $, SUPABASE_KEY, SUPABASE_URL, q, supabase } from './client.js';
 import { ackState } from './coach.js';
@@ -13,7 +22,7 @@ const RF_KEY = () => 'cut_refine_' + (S.user?.id || 'x');
 
 export function rfSave() {
   try {
-    S.rf.text || S.rf.pending
+    S.rf.form || S.rf.pending
       ? localStorage.setItem(RF_KEY(), JSON.stringify(S.rf))
       : localStorage.removeItem(RF_KEY());
   } catch {}
@@ -24,7 +33,12 @@ function rfEnsure() {
   S.rfUid = S.user.id;
   try {
     const d = JSON.parse(localStorage.getItem(RF_KEY()) || 'null');
-    if (d && typeof d === 'object') S.rf = { text: String(d.text || '').slice(0, 4000), pending: d.pending || null };
+    if (d && typeof d === 'object')
+      S.rf = {
+        // Older saves held free text only; it becomes the form's note.
+        form: d.form && typeof d.form === 'object' ? d.form : d.text ? { note: String(d.text).slice(0, 300) } : null,
+        pending: d.pending || null,
+      };
   } catch {}
   // A pending marker found on a fresh page load means the request died with the old page.
   if (S.rf.pending && !S.aiBusy) {
@@ -42,14 +56,112 @@ function rfPaint() {
   const f = $('#aiRefineForm');
   if (!f) return;
   const b = f.querySelector('button[type=submit]'),
-    t = f.querySelector('textarea'),
+    fs = f.querySelector('fieldset'),
     busy = rfBusy();
   b.disabled = busy;
   b.classList.toggle('busy', busy);
-  b.textContent = busy ? 'Thinking…' : 'Refine & apply';
-  t.readOnly = busy;
-  if (!busy && t.value !== S.rf.text) t.value = S.rf.text;
+  b.textContent = busy ? 'Working on it…' : 'Apply changes';
+  if (fs) fs.disabled = busy;
   f.querySelector('.rf-note')?.classList.toggle('hidden', !S.rfInterrupted);
+}
+
+/** Raw values of the change form. @param {HTMLFormElement} form */
+function readChangeForm(form) {
+  const fd = new FormData(form),
+    o = {};
+  for (const k of [
+    'cal_mode',
+    'cal_value',
+    'pro_mode',
+    'pro_value',
+    'meals',
+    'diet',
+    'add',
+    'budget',
+    'cooking',
+    'training_days',
+    'focus',
+    'max_session',
+    'note',
+  ])
+    o[k] = String(fd.get(k) ?? '');
+  o.remove = fd.getAll('remove').map(String);
+  return o;
+}
+
+/** Live preview of the change form: what will be asked, and what is blocked. Also saves the draft. */
+/** The plan the change form edits: the active one (a waiting coach draft is not "my plan" yet). */
+const changeBase = () => S.aiActivePlan || getAIBasePlan();
+
+export function updateChangePreview(_e, force = false) {
+  const form = $('#aiRefineForm'),
+    base = changeBase(),
+    el = $('#rfPreview');
+  if (!form || !base || !el) return;
+  const raw = readChangeForm(form);
+  const blank = !raw.remove.length && Object.entries(raw).every(([k, v]) => k === 'remove' || v === '' || v === 'keep');
+  S.rf.form = blank ? null : raw;
+  S.rfInterrupted = false;
+  form.querySelector('.rf-note')?.classList.add('hidden');
+  rfSave();
+  for (const k of ['cal', 'pro']) {
+    const v = form.querySelector(`[name=${k}_value]`);
+    if (v) v.disabled = raw[k + '_mode'] === 'keep' || !raw[k + '_mode'];
+  }
+  const facts = currentFacts(base.plan, base.inputs),
+    { changes, errors, warnings, target } = cleanChanges(raw, facts),
+    lines = describeChanges(changes, facts, target),
+    untouched = !force && !lines.length && errors.length === 1 && /at least one change/.test(errors[0]);
+  el.innerHTML = untouched
+    ? '<p class="muted small">Pick what to change. Anything you leave on “Keep” stays as it is.</p>'
+    : `${lines.length ? `<ul class="chg">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}${errors.map((x) => `<p class="small rf-err" role="alert">${esc(x)}</p>`).join('')}${warnings.map((x) => `<p class="small rf-warn">${esc(x)}</p>`).join('')}`;
+}
+
+/** The structured "Change my plan" form, filled with the live plan's numbers and the saved draft. */
+function changeForm(base) {
+  const f = currentFacts(base.plan, base.inputs),
+    d = S.rf.form || {},
+    busy = rfBusy(),
+    sel = (name, opts, label) =>
+      `<select name="${name}" aria-label="${esc(label)}">${opts.map(([v, l]) => `<option value="${v}" ${String(d[name] ?? '') === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`,
+    numIn = (name, ph, min, max, step = 1) =>
+      `<input name="${name}" type="number" inputmode="numeric" min="${min}" max="${max}" step="${step}" placeholder="${esc(ph)}" value="${esc(d[name] ?? '')}" />`,
+    keep = (now) => [['', `Keep (${now})`]],
+    removed = new Set((d.remove || []).map(String));
+  return `<form id="aiRefineForm" class="chg-form" novalidate><div class="notice warn rf-note ${S.rfInterrupted ? '' : 'hidden'} u-mb10" role="status">Your last change didn’t finish because the page was closed or reloaded. Your choices are still here. Tap Apply changes to send them again.</div>
+ <fieldset ${busy ? 'disabled' : ''}><div class="formgrid">
+ <div class="field"><label>Calories <small class="muted">now ${f.kcal ?? '–'} kcal</small></label><div class="row">${sel(
+   'cal_mode',
+   [
+     ['keep', 'Keep'],
+     ['lower', 'Lower by'],
+     ['raise', 'Raise by'],
+     ['set', 'Set to'],
+   ],
+   'Calories change'
+ )}${numIn('cal_value', 'kcal', 50, 6000, 50)}</div></div>
+ <div class="field"><label>Protein <small class="muted">now ${f.protein ?? '–'} g</small></label><div class="row">${sel(
+   'pro_mode',
+   [
+     ['keep', 'Keep'],
+     ['raise', 'Raise by'],
+     ['set', 'Set to'],
+   ],
+   'Protein change'
+ )}${numIn('pro_value', 'g', 5, 400, 5)}</div></div>
+ <div class="field"><label>Meals per day</label>${sel('meals', [...keep(f.meals), ...[2, 3, 4, 5, 6].filter((n) => n !== f.meals).map((n) => [n, String(n)])], 'Meals per day')}</div>
+ <div class="field"><label>Diet</label>${sel('diet', [...keep(f.diet), ...['omnivore', 'eggetarian', 'vegetarian', 'vegan'].filter((x) => x !== f.diet).map((x) => [x, x.charAt(0).toUpperCase() + x.slice(1)])], 'Diet')}</div>
+ ${f.foods.length ? `<div class="field full"><label>Remove from my plan</label><div class="chips">${f.foods.map((n) => `<label class="chip"><input type="checkbox" name="remove" value="${esc(n)}" ${removed.has(n) ? 'checked' : ''}/><span>${esc(n)}</span></label>`).join('')}</div></div>` : ''}
+ <div class="field full"><label>Add or include <small class="muted">up to 5, comma separated</small></label><input name="add" maxlength="200" placeholder="e.g. tofu, sprouts, soya chunks" value="${esc(d.add ?? '')}" /></div>
+ <div class="field"><label>Budget (₹/day)</label>${numIn('budget', f.budget ? `Keep (₹${f.budget})` : 'Keep', 50, 100000, 10)}</div>
+ <div class="field"><label>Cooking time (min/day)</label>${numIn('cooking', f.cooking !== null ? `Keep (${f.cooking})` : 'Keep', 0, 180, 5)}</div>
+ <div class="field"><label>Training days / week</label>${sel('training_days', [...keep(f.trainingDays), ...[0, 1, 2, 3, 4, 5, 6, 7].filter((n) => n !== f.trainingDays).map((n) => [n, String(n)])], 'Training days')}</div>
+ <div class="field"><label>Training focus</label>${sel('focus', [['', 'Keep'], ...Object.entries(FOCUS).map(([k, v]) => [k, v.charAt(0).toUpperCase() + v.slice(1)])], 'Training focus')}</div>
+ <div class="field"><label>Longest session</label>${sel('max_session', [['', f.maxSession ? `Keep (${f.maxSession} min)` : 'Keep'], ...[30, 45, 60, 75, 90].map((n) => [n, `${n} min`])], 'Longest session')}</div>
+ <div class="field full"><label>Anything else <small class="muted">optional</small></label><textarea name="note" rows="2" maxlength="300" placeholder="e.g. shorter prep on weekdays">${esc(d.note ?? '')}</textarea></div>
+ </div></fieldset>
+ <div id="rfPreview" class="u-mb10" aria-live="polite"></div>
+ <button class="btn primary${busy ? ' busy' : ''}" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Working on it…' : 'Apply changes'}</button> <span class="ai-muted">The new plan is checked against every change before it is applied. You can undo it.</span></form>`;
 }
 
 function aiPlanStatusCard() {
@@ -153,7 +265,7 @@ export function aiPlannerPage() {
  <label class="row ai-wide u-fs12m"><input type="checkbox" name="adult_confirmed" required ${p.adult_confirmed ? 'checked' : ''}/> I am 18 or older and understand this is general wellness information, not medical advice.</label>
  <div class="ai-wide"><button class="btn primary" id="aiProfileAction" type="submit">${r ? 'Analyze edits & refine plan' : 'Generate my AI plan'}</button> ${r ? '<button class="btn" type="button" data-ai-generate-new>Generate a fresh plan</button>' : ''} <span class="ai-muted">Your profile stays editable. When you submit changes, the AI compares them with the previous plan, explains the implications and creates a reviewable draft.</span></div><div class="ai-wide ai-muted" id="aiEditPreview" aria-live="polite"></div></form>`
  )}
- ${r ? (rfEnsure(), card('Refine plan', `<form id="aiRefineForm"><div class="notice warn rf-note ${S.rfInterrupted ? '' : 'hidden'} u-mb10" role="status">Your last refine didn’t finish because the page was closed or reloaded. Your text is back below. Tap Refine &amp; apply to send it again.</div><div class="field"><textarea name="instruction" rows="2" required aria-label="What should change?" placeholder="e.g. swap paneer for tofu, shorter prep" ${rfBusy() ? 'readonly' : ''}>${esc(S.rf.text)}</textarea></div><button class="btn primary${rfBusy() ? ' busy' : ''}" type="submit" ${rfBusy() ? 'disabled' : ''}>${rfBusy() ? 'Thinking…' : 'Refine &amp; apply'}</button></form>`)) : ''}</div></div>`;
+ ${r ? (rfEnsure(), card('Change my plan', changeForm(changeBase()))) : ''}</div></div>`;
 }
 
 export async function callAIPlanner(action, profile, extra = {}) {
@@ -391,7 +503,7 @@ export function planChangeCard() {
   return `<section class="card plan-change"><div class="row between"><div class="eyebrow">${c.restored ? 'Plan restored' : 'Plan updated · What changed'}</div><button class="btn sm ghost" data-dismiss-change aria-label="Dismiss">✕</button></div><h2>${esc(c.title)}</h2>${c.summary && !c.restored ? `<p class="muted small clamp3">${esc(c.summary)}</p>` : ''}<ul class="chg">${c.lines.map((l) => `<li><b>${esc(l.label)}</b><span>${esc(l.detail)}</span></li>`).join('')}</ul>${c.prevId ? `<button class="btn" data-ai-restore="${esc(c.prevId)}">Undo this change</button>` : ''}</section>`;
 }
 
-export async function runAIPlanRequest(action, profile, extra, button, workingLabel, idleLabel, onResult) {
+export async function runAIPlanRequest(action, profile, extra, button, workingLabel, idleLabel, onResult, check) {
   if (S.aiBusy) return false;
   let ok = false;
   try {
@@ -402,7 +514,11 @@ export async function runAIPlanRequest(action, profile, extra, button, workingLa
       button.classList.add('busy');
       button.textContent = workingLabel;
     }
-    const result = await callAIPlanner(action, profile, extra);
+    let result = await callAIPlanner(action, profile, extra);
+    if (check) {
+      result = await check(result);
+      if (!result) return false; // the user kept the current plan
+    }
     if (onResult) onResult();
     await saveAIDraft(result, profile);
     ok = true;
@@ -463,14 +579,48 @@ export async function refineAIPlan(e) {
   if (S.aiBusy) return;
   const form = e.currentTarget,
     button = form.querySelector('button[type=submit]'),
-    base = getAIBasePlan(),
-    message = String(new FormData(form).get('instruction') || '').trim();
+    base = changeBase();
   if (!base) return;
+  const facts = currentFacts(base.plan, base.inputs),
+    raw = readChangeForm(form),
+    { changes, errors, target } = cleanChanges(raw, facts);
+  if (errors.length) {
+    updateChangePreview(null, true);
+    form.querySelector('.rf-err')?.scrollIntoView({ block: 'center' });
+    return;
+  }
   try {
-    const profile = collectAIProfile($('#aiIntakeForm')),
-      changes = describeAIProfileChanges(base.inputs || {}, profile);
-    const instruction = buildAIEditInstruction(base, profile, changes, message);
-    S.rf.text = message;
+    const intake = collectAIProfile($('#aiIntakeForm')),
+      profileEdits = describeAIProfileChanges(base.inputs || {}, intake),
+      profile = applyToProfile(intake, changes),
+      diet = changes.diet || profile.dietary_pattern || 'omnivore';
+    let instruction = changeInstruction(changes, facts, target);
+    if (profileEdits.length)
+      instruction +=
+        '\n\nThe user also edited their profile:\n' +
+        profileEdits
+          .map((x) => `- ${x.label}: ${aiProfileValue(x.from, x.key)} → ${aiProfileValue(x.to, x.key)}`)
+          .join('\n');
+    const extra = { instruction, current_plan_id: base.id, changes };
+    // The answer must meet every requirement. One corrective retry; then the user decides instead of a silent apply.
+    const check = async (result) => {
+      let miss = verifyPlan(result.plan, changes, facts, target, diet);
+      if (!miss.length) return result;
+      const retry = await callAIPlanner('refine', profile, {
+        ...extra,
+        instruction: `${instruction}\n\nYOUR LAST ANSWER WAS REJECTED BY THE APP CHECK: ${miss.join('; ')}. Fix every point and return the complete plan.`,
+      });
+      miss = verifyPlan(retry.plan, changes, facts, target, diet);
+      if (!miss.length) return retry;
+      const ok = await uiConfirm(
+        'The AI couldn’t do all of it',
+        `Its best plan still misses: ${miss.join('; ')}. Apply it anyway, or keep your current plan and adjust the form?`,
+        { confirm: 'Apply anyway', cancel: 'Keep current plan' }
+      );
+      if (!ok) toast('Kept your current plan. Your changes are still in the form.');
+      return ok ? retry : null;
+    };
+    S.rf.form = raw;
     S.rf.pending = { at: Date.now(), planId: base.id };
     S.rfInterrupted = false;
     rfSave();
@@ -478,15 +628,16 @@ export async function refineAIPlan(e) {
       await runAIPlanRequest(
         'refine',
         profile,
-        { instruction, current_plan_id: base.id },
+        extra,
         button,
-        'Thinking…',
-        'Refine & apply',
+        'Working on it…',
+        'Apply changes',
         () => {
-          S.rf.text = '';
+          S.rf.form = null;
           S.rf.pending = null;
           rfSave();
-        }
+        },
+        check
       );
     } finally {
       if (S.rf.pending) {

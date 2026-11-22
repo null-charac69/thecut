@@ -8,7 +8,8 @@ const kind = (m, extra = {}) => friendlyError({ message: m, ...extra }).kind;
 
 test('maps auth and network errors to friendly kinds', () => {
   assert.equal(kind('Invalid login credentials'), 'creds');
-  assert.equal(kind('email rate limit exceeded'), 'rate');
+  assert.equal(kind('email rate limit exceeded'), 'email_rate');
+  assert.equal(kind('Request rate limit reached'), 'rate');
   assert.equal(kind('User already registered'), 'exists');
   assert.equal(kind('Password should be at least 6 characters'), 'weak');
   assert.equal(kind('Failed to fetch'), 'net');
@@ -19,7 +20,8 @@ test('maps auth and network errors to friendly kinds', () => {
 
 test('uses error codes as well as messages', () => {
   assert.equal(kind('x', { code: 'invalid_credentials' }), 'creds');
-  assert.equal(kind('x', { code: 'over_email_send_rate_limit' }), 'rate');
+  assert.equal(kind('x', { code: 'over_email_send_rate_limit' }), 'email_rate');
+  assert.equal(kind('x', { code: 'over_request_rate_limit' }), 'rate');
 });
 
 test('escapes raw messages shown in the dialog body', () => {

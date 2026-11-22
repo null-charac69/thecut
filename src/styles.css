@@ -2015,6 +2015,68 @@ canvas {
   color: var(--red);
 }
 
+/* Change-my-plan form */
+.chg-form fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.chg-form .row > select {
+  flex: 1.2;
+}
+.chg-form .row > input {
+  flex: 1;
+}
+.chg-form input:disabled {
+  opacity: 0.45;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #1b2820;
+}
+.chip:has(input:checked) {
+  border-color: var(--red);
+  color: #ffc6bf;
+  text-decoration: line-through;
+}
+.chip {
+  position: relative;
+  min-height: 36px;
+}
+.chg-form .chip > input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+.chip:has(input:focus-visible) {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+.rf-err {
+  color: #ff9b91;
+  margin: 4px 0;
+}
+.rf-warn {
+  color: var(--orange);
+  margin: 4px 0;
+}
 /* ===== Mobile-first consolidation (<=860px). Last in file so it wins over the legacy layers above. ===== */
 details.fold {
   padding: 0;

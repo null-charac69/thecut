@@ -22,7 +22,7 @@ export const S = {
   aiBusy: false,
   lastPlanChange: null,
   aiProgTimer: null,
-  rf: { text: '', pending: null },
+  rf: { form: null, pending: null },
   rfUid: null,
   rfInterrupted: false,
   aiUnlocked: false,

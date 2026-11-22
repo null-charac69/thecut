@@ -169,7 +169,7 @@ export function createClient() {
         if (db.accounts?.[email] !== password) return err('Invalid login credentials');
         db.session = db.sessions[email]; emit('SIGNED_IN', db.session); return { data: { session: db.session, user: db.session.user }, error: null };
       },
-      signUp: async ({ email }) => { db.signUps = [...(db.signUps || []), email]; return { data: { user: { identities: [{}] }, session: null }, error: null }; },
+      signUp: async ({ email }) => { if (db.signUpError) return { data: { user: null, session: null }, error: db.signUpError }; db.signUps = [...(db.signUps || []), email]; return { data: { user: { identities: [{}] }, session: null }, error: null }; },
       signOut: async () => { db.session = null; emit('SIGNED_OUT', null); return { error: null }; },
       updateUser: async (p) => { if (p.data) Object.assign(db.session.user.user_metadata, p.data); db.calls.push({ table: 'auth', op: 'updateUser', payload: p }); return { data: { user: db.session.user }, error: null }; },
       resetPasswordForEmail: async (e) => { db.calls.push({ table: 'auth', op: 'reset', payload: e }); return { data: {}, error: null }; },

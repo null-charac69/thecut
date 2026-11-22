@@ -37,7 +37,7 @@ import {
   loadPlanHistory,
   refineAIPlan,
   resetPlan,
-  rfSave,
+  updateChangePreview,
   updateAIEditPreview,
 } from './plan.js';
 import {
@@ -249,12 +249,9 @@ function wire() {
   $('#aiIntakeForm')?.addEventListener('change', updateAIEditPreview);
   document.querySelectorAll('[data-ai-generate-new]').forEach((b) => (b.onclick = () => generateFreshAIPlan(b)));
   $('#aiRefineForm')?.addEventListener('submit', refineAIPlan);
-  $('#aiRefineForm textarea')?.addEventListener('input', (e) => {
-    S.rf.text = e.target.value;
-    S.rfInterrupted = false;
-    $('#aiRefineForm .rf-note')?.classList.add('hidden');
-    rfSave();
-  });
+  $('#aiRefineForm')?.addEventListener('input', updateChangePreview);
+  $('#aiRefineForm')?.addEventListener('change', updateChangePreview);
+  if ($('#aiRefineForm')) updateChangePreview();
   document.querySelectorAll('[data-plan-reset]').forEach((b) => (b.onclick = () => resetPlan()));
   document.querySelectorAll('[data-ai-apply]').forEach((b) => (b.onclick = () => applyAIPlan(b.dataset.aiApply)));
   document

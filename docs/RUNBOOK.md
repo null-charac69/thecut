@@ -52,3 +52,11 @@ Set these Supabase Edge Function secrets: `LLM_BASE_URL=https://bedrock-runtime.
 - Set `LLM_MODEL` (heavy: plan generate/refine, reviews) and `LLM_MODEL_FAST` (coach chat, lists, edit checks) to the picks, then redeploy `the-cut-ai` (all files: index.ts, llm.ts, plan.ts, workout.ts, lists.ts, prompts.ts).
 - Each model call logs `{"llm","model","fast","ms","out_tokens"}` in the function logs; use them to confirm the latency in production.
 - Result 2026-11-21 (Mumbai, 3 runs): plans MiniMax M2.5 16.9 s 3/3 valid, gpt-oss-120b 12.7–13.3 s 2/3 (one bad JSON), DeepSeek V3.2 17.8–26 s 0/2; coach (one reply) gpt-oss-120b 1.5–5.5 s, Qwen3-Next 0.8–1.2 s, GLM-4.7 Flash ~0.5 s but vaguer numbers; lists all valid, 1.7–13 s. Not enabled on this account: Claude, GPT-5.6, Grok, GLM-5.3. Nemotron Super timed out; Kimi K3.1 truncated plans at 6,500 tokens.
+
+## Sign-ups say "couldn't send your verification email" (OI-23)
+Supabase's built-in mailer sends only a few auth emails per hour for the whole project; extra sign-ups fail with `over_email_send_rate_limit`. Fix (free):
+1. Create a free SMTP account (Brevo: 300 emails/day; or Resend: 100/day) and verify a sender address or domain.
+2. Supabase → Authentication → Emails → SMTP settings: enable custom SMTP, enter host, port 587, username, password (from the provider), sender email and name.
+3. Supabase → Authentication → Rate limits: raise "emails sent per hour" (only editable once custom SMTP is on).
+4. Check Supabase → Logs → Auth for `over_email_send_rate_limit` to confirm it stopped.
+Alternative without email: turn off "Confirm email" (Auth → Providers → Email). Accounts then work instantly, but email addresses are not verified.

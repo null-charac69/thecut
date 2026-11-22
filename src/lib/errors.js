@@ -11,7 +11,15 @@ export function friendlyError(err) {
       title: 'Wrong email or password',
       body: 'That email and password don’t match an account. Check for typos, or reset your password.',
     };
-  if (/rate limit|too many|over_request|over_email_send|429/i.test(raw + code))
+  // Supabase's built-in mailer sends only a few auth emails per hour for the whole project, so a few sign-ups close
+  // together exhaust it. The account may not be created; waiting a minute does not help.
+  if (/over_email_send_rate_limit|email rate limit/i.test(raw + code))
+    return {
+      kind: 'email_rate',
+      title: 'Couldn’t send your verification email',
+      body: 'A lot of people signed up in the last hour and our email limit is used up. Please try again in about an hour. If you already got an email from us, open its link and sign in.',
+    };
+  if (/rate limit|too many|over_request|429/i.test(raw + code))
     return { kind: 'rate', title: 'Too many attempts', body: 'Slow down a bit. Wait a minute or two, then try again.' };
   if (/already registered|already been registered|user_already_exists/i.test(raw + code))
     return {

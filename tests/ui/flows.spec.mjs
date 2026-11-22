@@ -236,19 +236,95 @@ test('plan: a new user generates a plan from the intake form and lands on it', a
   expect(app.errors).toEqual([]);
 });
 
-test('plan: refine with a message applies the refined plan', async ({ page }) => {
+test('plan: the change form turns choices into checked requirements and applies the plan', async ({ page }) => {
   const app = await openApp(page);
-  await page.locator('#aiRefineForm textarea').fill('swap paneer for tofu');
-  await page.locator('#aiRefineForm button[type=submit]').click();
+  const f = page.locator('#aiRefineForm');
+  await expect(f.getByText('now 2100 kcal')).toBeVisible();
+  await f.locator('label.chip', { hasText: 'Paneer' }).click();
+  await f.locator('input[name=add]').fill('Tofu');
+  await f.locator('textarea[name=note]').fill('shorter prep');
+  await expect(page.locator('#rfPreview')).toContainText('Remove: Paneer');
+  await expect(page.locator('#rfPreview')).toContainText('Include: Tofu');
+  await f.locator('button[type=submit]').click();
   await expect(page.getByText('Refined plan, 2,000 kcal')).toBeVisible();
-  expect(app.aiCalls.find((c) => c.action === 'refine').instruction).toContain('tofu');
-  // The refined plan swapped paneer for tofu: the lists are rebuilt from it when Prep opens.
+  const calls = app.aiCalls.filter((c) => c.action === 'refine');
+  expect(calls).toHaveLength(1); // the answer met every requirement: no retry
+  expect(calls[0].instruction).toContain('Do not use these items anywhere: Paneer');
+  expect(calls[0].instruction).toContain('Include each of these at least once: Tofu');
+  expect(calls[0].instruction).toContain('USER NOTE');
+  expect(calls[0].changes.remove).toEqual(['Paneer']);
+  // The removal and addition are kept in the profile, so later plans keep them.
+  const saved = (await rows(app, 'ai_plan_versions')).find((v) => v.title === 'Refined plan, 2,000 kcal');
+  expect(saved.inputs.additional_notes).toContain('Avoid in plans: Paneer.');
+  expect(saved.inputs.food_preferences).toContain('Tofu');
+  // The lists are rebuilt from the refined plan.
   await go(page, 'prep');
-  await expect(page.getByText('Building your lists from your plan…')).toHaveCount(0);
   await expect(page.locator('[data-grocery]').first()).toBeVisible();
   const g = (await rows(app, 'grocery_items')).map((x) => x.name);
   expect(g).toContain('Tofu');
   expect(g).not.toContain('Paneer');
+  expect(app.errors).toEqual([]);
+});
+
+test('plan: if the AI ignores the change it retries once, then asks instead of applying', async ({ page }) => {
+  const ignored = {
+    plan: { ...(await import('./fixtures.mjs')).planA, title: 'Ignored the change' },
+    model: 'fixture',
+    prompt_version: 'v',
+  };
+  const app = await openApp(page, { ai: (b) => (b.action === 'refine' ? ignored : undefined) });
+  const f = page.locator('#aiRefineForm');
+  await f.locator('label.chip', { hasText: 'Paneer' }).click();
+  await f.locator('button[type=submit]').click();
+  await expect(page.locator('#uiConfirm')).toContainText('still contains Paneer');
+  const calls = app.aiCalls.filter((c) => c.action === 'refine');
+  expect(calls).toHaveLength(2);
+  expect(calls[1].instruction).toContain('YOUR LAST ANSWER WAS REJECTED BY THE APP CHECK: still contains Paneer');
+  await page.locator('#uiConfirm [data-act="0"]').click(); // Keep current plan
+  await expect(page.getByText('Kept your current plan. Your changes are still in the form.')).toBeVisible();
+  expect((await rows(app, 'ai_plan_versions')).some((v) => v.title === 'Ignored the change')).toBe(false);
+  await expect(f.locator('label.chip', { hasText: 'Paneer' }).locator('input')).toBeChecked();
+});
+
+test('plan: unsafe or empty changes are blocked before any AI call', async ({ page }) => {
+  const app = await openApp(page);
+  const f = page.locator('#aiRefineForm');
+  await f.locator('button[type=submit]').click();
+  await expect(page.locator('#rfPreview')).toContainText('Pick at least one change');
+  await f.locator('select[name=cal_mode]').selectOption('set');
+  await f.locator('input[name=cal_value]').fill('1000');
+  await expect(page.locator('#rfPreview')).toContainText('below the 1200 kcal safety floor');
+  await f.locator('button[type=submit]').click();
+  expect(app.aiCalls.filter((c) => c.action === 'refine')).toHaveLength(0);
+});
+
+test('plan: the change form survives a reload', async ({ page }) => {
+  await openApp(page);
+  const f = page.locator('#aiRefineForm');
+  await f.locator('select[name=meals]').selectOption('5');
+  await f.locator('input[name=add]').fill('Sprouts');
+  await page.reload();
+  await expect(page.locator('#aiRefineForm select[name=meals]')).toHaveValue('5');
+  await expect(page.locator('#aiRefineForm input[name=add]')).toHaveValue('Sprouts');
+  await expect(page.locator('#rfPreview')).toContainText('Meals per day: 4 → 5');
+});
+
+test('sign-up: when the verification email limit is hit, the message says so and when to retry', async ({ page }) => {
+  await openApp(page, { signedIn: false });
+  await page.evaluate(
+    () =>
+      (window.__FAKE.signUpError = {
+        message: 'email rate limit exceeded',
+        code: 'over_email_send_rate_limit',
+        status: 429,
+      })
+  );
+  await page.locator('#modeUp').click();
+  await page.locator('#authForm input[name=email]').fill('new@example.com');
+  await page.locator('#authForm input[name=password]').fill('correct-horse-battery');
+  await page.locator('#authForm button[type=submit]').click();
+  await expect(page.locator('#uiModal')).toContainText('Couldn’t send your verification email');
+  await expect(page.locator('#uiModal')).toContainText('about an hour');
 });
 
 test('coach: chat reply appears', async ({ page }) => {
